@@ -55,6 +55,7 @@ class Config:
     current_profile: str = DEFAULT_PROFILE
     profiles: dict[str, Profile] = field(default_factory=dict)
     default_format: str | None = None  # json | table | markdown; None = not yet chosen
+    claude_prompted: bool = False  # have we offered the Claude Code skill install yet?
     # sticky session context: option-name -> default value, applied to later
     # commands (see `openproject context`). `contexts` holds named, saved ones.
     context: dict = field(default_factory=dict)
@@ -81,6 +82,7 @@ class Config:
                 current_profile=raw.get("current_profile", DEFAULT_PROFILE),
                 profiles=profiles,
                 default_format=raw.get("default_format"),
+                claude_prompted=bool(raw.get("claude_prompted", False)),
                 context=raw.get("context") or {},
                 contexts=raw.get("contexts") or {},
             )
@@ -93,6 +95,7 @@ class Config:
         data: dict[str, Any] = {
             "current_profile": self.current_profile,
             "default_format": self.default_format,
+            "claude_prompted": self.claude_prompted,
             "context": self.context,
             "contexts": self.contexts,
             "profiles": {

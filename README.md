@@ -111,6 +111,23 @@ every `v*` tag and attaches them to the release.
 > has an OpenProject CLI at `/usr/local/bin/op`). Add your own alias if you want
 > a shorter command, e.g. `alias opr=openproject`.
 
+### Use with Claude Code
+
+Register the CLI as a Claude Code **skill** so Claude auto-uses it whenever you
+mention OpenProject:
+
+```bash
+openproject install claude          # writes ~/.claude/skills/openproject/SKILL.md
+openproject install claude --print  # preview the skill first
+openproject install claude --uninstall
+```
+
+The skill points Claude at `openproject guide`, so it learns the tool from the
+tool. On the **first interactive run**, if Claude Code is detected, the CLI also
+offers to install it (once) — decline and nothing changes. Add `--memory` to also
+drop a one-line hint in `~/.claude/CLAUDE.md`, or `--project` to install into the
+current repo's `.claude/`.
+
 ### 2. Bring up a local OpenProject (for development/testing)
 
 ```bash

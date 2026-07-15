@@ -53,6 +53,10 @@ DISCOVER COMMANDS & OPTIONS
   openproject <group> --help              e.g. `openproject wp --help`
   openproject <group> <command> --help    e.g. `openproject wp create --help`
 
+USE WITH CLAUDE CODE
+  `openproject install claude` registers a Claude Code skill so Claude auto-uses
+  this CLI whenever you mention OpenProject. (`--print` to preview, `--uninstall` to remove.)
+
 KEY GOTCHAS (save yourself a round-trip)
   - `wp update` handles lockVersion automatically; `raw patch` does NOT (send it yourself).
   - Time `hours` accept decimals (2.5) or ISO-8601 (PT2H30M).

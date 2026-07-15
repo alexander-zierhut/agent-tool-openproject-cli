@@ -83,8 +83,44 @@ def _root(
     if os.environ.get("OPCLI_NO_CONTEXT") != "1":
         active = ctx.obj.config.context
         if active:
-            dm = _context_default_map(ctx.command, active, skip={"context", "settings", "guide"})
+            dm = _context_default_map(ctx.command, active, skip={"context", "settings", "guide", "install"})
             ctx.default_map = {**(ctx.default_map or {}), **dm}
+
+    _maybe_offer_claude(ctx, interactive)
+
+
+def _maybe_offer_claude(ctx: typer.Context, interactive: bool) -> None:
+    """Once, on an interactive first run with Claude Code present, offer to
+    register the Claude skill. Never runs under Claude Code itself (non-TTY)."""
+    if not interactive or ctx.invoked_subcommand in ("install", "settings", "guide", "context"):
+        return
+    cfg = ctx.obj.config
+    if cfg.claude_prompted:
+        return
+    from .commands import install as _install
+
+    if not _install.claude_available() or _install.skill_installed():
+        return
+    try:
+        sys.stderr.write(
+            "\nClaude Code detected. Install the OpenProject skill so Claude can use this CLI "
+            "automatically? [y/N]: "
+        )
+        sys.stderr.flush()
+        ans = sys.stdin.readline().strip().lower()
+    except Exception:
+        ans = ""
+    cfg.claude_prompted = True
+    if ans in ("y", "yes"):
+        try:
+            path = _install.write_skill()
+            sys.stderr.write(f"Installed Claude skill at {path}. Start a new Claude session to pick it up.\n")
+        except Exception as exc:  # pragma: no cover
+            sys.stderr.write(f"Could not install skill: {exc}\n")
+    try:
+        cfg.save()
+    except Exception:  # pragma: no cover
+        pass
 
 
 def _context_default_map(group, values: dict, skip: set) -> dict:
@@ -155,6 +191,7 @@ from .commands import (  # noqa: E402
     custom_fields,
     filelinks,
     guide,
+    install,
     memberships,
     notifications,
     projects,
@@ -186,6 +223,7 @@ app.add_typer(costs.app, name="cost", help="Time & cost reporting per person/pro
 app.add_typer(raw.app, name="raw", help="Escape hatch: call any API endpoint directly.")
 app.add_typer(settings.app, name="settings", help="View & change CLI settings (default output format).")
 app.add_typer(context_cmd.app, name="context", help="Sticky session defaults (project/user/filters) reused across commands.")
+app.add_typer(install.app, name="install", help="Integrate with other tools (e.g. `install claude` registers a Claude Code skill).")
 
 
 def main() -> None:

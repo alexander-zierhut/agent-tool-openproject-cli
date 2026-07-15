@@ -10,6 +10,9 @@ cheaply. For the human tutorial see [README](README.md); for every option see
 > agent can bootstrap from the tool alone, with no external docs. Then
 > `openproject guide <topic>` (search, wp, time, costs, …) for focused cheat-sheets.
 
+> **Claude Code users:** `openproject install claude` registers a skill so Claude
+> auto-invokes the CLI whenever you mention OpenProject.
+
 ## The output contract
 
 - **stdout is JSON by default.** Parse it directly. Success prints a JSON object

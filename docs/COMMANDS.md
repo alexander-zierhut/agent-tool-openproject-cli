@@ -12,6 +12,7 @@ _Auto-generated from the CLI (`python scripts/gen_docs.py`). Every command also 
 - [`cost`](#cost) — Time & cost reporting per person/project (invoicing).
 - [`filelink`](#filelink) — Nextcloud/file-storage links on work packages.
 - [`guide`](#guide) — Built-in operating guide — how to use this CLI without external docs.
+- [`install`](#install) — Integrate with other tools (e.g. `install claude` registers a Claude Code skill).
 - [`member`](#member) — Project memberships & roles.
 - [`notify`](#notify) — In-app notifications.
 - [`project`](#project) — Create, list, archive projects.
@@ -286,6 +287,23 @@ List configured file storages (Nextcloud etc.).
 Built-in operating guide — how to use this CLI without external docs.
 
 **Arguments:** `topic` (optional)
+
+## `install`
+
+### `openproject install claude`
+
+Register this CLI with Claude Code as a Skill so Claude auto-uses it.
+
+Writes ~/.claude/skills/openproject/SKILL.md (idiomatic discovery). Claude
+then invokes it whenever you mention OpenProject. Reversible with --uninstall.
+
+| Option | Description |
+| --- | --- |
+| `--project` | Install into ./.claude (this repo) instead of ~/.claude. |
+| `--memory` | Also add a one-line hint to ~/.claude/CLAUDE.md. |
+| `--force` | Install even if Claude Code isn't detected. |
+| `--uninstall` | Remove the skill (and memory hint). |
+| `--print` | Print the SKILL.md that would be written and exit. |
 
 ## `member`
 
