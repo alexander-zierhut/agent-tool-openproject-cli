@@ -81,9 +81,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # install the package + runtime deps so PyInstaller has everything to
+      # bundle, plus pyinstaller and build tooling.
+      - run: pip install -e '.[build]' build
       - name: Build wheel + sdist
         run: |
-          pip install build
           python -m build
           ls -l dist
       - name: Install the wheel in a clean venv and smoke-test
