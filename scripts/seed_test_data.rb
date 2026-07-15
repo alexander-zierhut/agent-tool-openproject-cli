@@ -35,6 +35,15 @@ end
 # that use Bug/Feature/Milestone don't hit "type not allowed").
 Type.where(name: %w[Task Milestone Feature Bug Epic]).update_all(is_default: true)
 
+# 2c. Time-entry custom fields (for the per-entry cost report / CSV export).
+te_string = TimeEntryCustomField.find_or_create_by!(name: 'Cost Center') do |c|
+  c.field_format = 'string'; c.is_required = false
+end
+te_bool = TimeEntryCustomField.find_or_create_by!(name: 'Billable') do |c|
+  c.field_format = 'bool'; c.is_required = false
+end
+[te_string, te_bool].each { |cf| cf.update!(is_for_all: true) }
+
 # 3. Second user.
 jane = User.find_by(login: 'jane.doe')
 unless jane

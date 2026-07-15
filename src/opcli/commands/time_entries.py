@@ -16,7 +16,7 @@ import typer
 from .. import hal, resolve, serialize
 from ..duration import iso_to_hours, parse_hours_input
 from ..errors import ApiError, OpError, ValidationError
-from ._shared import ctx_obj, set_link
+from ._shared import apply_custom_fields, ctx_obj, set_link
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -106,6 +106,9 @@ def list_entries(
     entries = query_time_entries(client, user=user, project=project, work_package=work_package,
                                  frm=frm, to=to, month=month, limit=limit or None)
     rows = [serialize.time_entry(t) for t in entries]
+    if obj.emitter.stream:
+        obj.emitter.stream_json(rows)
+        return
     obj.emitter.emit(rows, columns=_COLUMNS, empty="(no time entries)")
 
 
@@ -126,6 +129,7 @@ def add(
     activity: str = typer.Option(None, "--activity", help="Activity name (e.g. Development)."),
     comment: str = typer.Option(None, "--comment", "-m", help="Comment."),
     user: str = typer.Option(None, "--user", "-u", help="Log on behalf of another user (needs permission)."),
+    custom_fields: str = typer.Option(None, "--custom-fields", help="JSON of customFieldN values (see `cf time`)."),
 ) -> None:
     """Log a time entry. Hours accept decimals (2.5) or ISO-8601 (PT2H30M).
 
@@ -152,6 +156,7 @@ def add(
         body["comment"] = {"raw": comment}
     if user:
         set_link(body, "user", resolve.user(client, user, project_ref=project))
+    apply_custom_fields(body, custom_fields)
 
     obj.emitter.emit(serialize.time_entry(client.post("time_entries", json=body)))
 
@@ -164,11 +169,13 @@ def edit(
     spent_on: str = typer.Option(None, "--date", help="New date YYYY-MM-DD."),
     activity: str = typer.Option(None, "--activity", help="New activity name."),
     comment: str = typer.Option(None, "--comment", "-m", help="New comment."),
+    custom_fields: str = typer.Option(None, "--custom-fields", help="JSON of customFieldN values."),
 ) -> None:
     """Edit a time entry (partial; no lockVersion)."""
     obj = ctx_obj(ctx)
     client = obj.client()
     body: dict = {}
+    apply_custom_fields(body, custom_fields)
     if hours is not None:
         body["hours"] = parse_hours_input(hours)
     if spent_on is not None:

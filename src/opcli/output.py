@@ -8,11 +8,12 @@ to present it based on the active ``--output`` mode.
 
 from __future__ import annotations
 
+import csv as csvlib
 import dataclasses
 import enum
 import json as jsonlib
 import sys
-from typing import Any, Callable, Sequence
+from typing import Any, Callable, Iterable, Sequence
 
 from rich.console import Console
 from rich.table import Table
@@ -27,6 +28,7 @@ class OutputFormat(str, enum.Enum):
     json = "json"
     table = "table"
     markdown = "markdown"
+    csv = "csv"
 
     @classmethod
     def coerce(cls, value: "str | OutputFormat | None") -> "OutputFormat | None":
@@ -40,7 +42,9 @@ class OutputFormat(str, enum.Enum):
             return cls.json
         if v in ("table", "tbl", "t"):
             return cls.table
-        raise ValueError(f"unknown output format '{value}' (choose json, table, or markdown)")
+        if v in ("csv",):
+            return cls.csv
+        raise ValueError(f"unknown output format '{value}' (choose json, table, markdown, or csv)")
 
 
 def _accessor_value(row: dict, accessor: "str | Callable[[dict], Any]") -> Any:
@@ -63,11 +67,19 @@ def _fmt_cell(value: Any) -> str:
 
 
 class Emitter:
-    def __init__(self, fmt: OutputFormat = OutputFormat.json, *, color: bool = True, fields: Sequence[str] | None = None):
+    def __init__(
+        self,
+        fmt: OutputFormat = OutputFormat.json,
+        *,
+        color: bool = True,
+        fields: Sequence[str] | None = None,
+        stream: bool = False,
+    ):
         self.fmt = fmt
         self.console = Console(no_color=not color, highlight=False)
         # user-selected fields (dotted paths ok, e.g. "assignee.name"); None = command defaults
         self.fields = [f.strip() for f in fields if f.strip()] if fields else None
+        self.stream = stream
 
     # ---- main entry --------------------------------------------------
     def emit(
@@ -88,10 +100,24 @@ class Emitter:
         if self.fmt == OutputFormat.json:
             self._emit_json(data)
             return
+        if self.fmt == OutputFormat.csv:
+            self._emit_csv(data, columns=columns)
+            return
         if self.fmt == OutputFormat.markdown:
             self._emit_markdown(data, columns=columns, title=title, empty=empty)
             return
         self._emit_table(data, columns=columns, title=title, empty=empty)
+
+    def stream_json(self, items: Iterable[Any]) -> int:
+        """Emit an iterable as NDJSON — one JSON object per line, flushed as it
+        arrives. Honours --fields. Returns the number of items written."""
+        n = 0
+        for it in items:
+            obj = {f: _dotted_get(it, f) for f in self.fields} if (self.fields and isinstance(it, dict)) else it
+            sys.stdout.write(jsonlib.dumps(_jsonable(obj), ensure_ascii=False, default=str) + "\n")
+            sys.stdout.flush()
+            n += 1
+        return n
 
     def message(self, text: str) -> None:
         """A human status line (table mode only; suppressed in json mode)."""
@@ -134,6 +160,28 @@ class Emitter:
         for row in rows:
             table.add_row(*[_fmt_cell(_accessor_value(row, acc)) for _, acc in columns])
         self.console.print(table)
+
+    # ---- csv ---------------------------------------------------------
+    def _emit_csv(self, data: Any, *, columns) -> None:
+        rows = data if isinstance(data, list) else [data] if isinstance(data, dict) else None
+        if rows is None:
+            sys.stdout.write(str(data) + "\n")
+            return
+        writer = csvlib.writer(sys.stdout)
+        if columns:
+            writer.writerow([h for h, _ in columns])
+            for r in rows:
+                writer.writerow([_csv_cell(_accessor_value(r, acc)) for _, acc in columns])
+        elif rows and isinstance(rows[0], dict):
+            # union of keys preserves columns even if some rows omit a field
+            keys: list[str] = []
+            for r in rows:
+                for k in r:
+                    if k not in keys:
+                        keys.append(k)
+            writer.writerow(keys)
+            for r in rows:
+                writer.writerow([_csv_cell(r.get(k)) for k in keys])
 
     # ---- markdown ----------------------------------------------------
     def _emit_markdown(self, data: Any, *, columns, title, empty) -> None:
@@ -202,6 +250,16 @@ def _project(data: Any, fields: Sequence[str]) -> Any:
     if isinstance(data, dict):
         return {f: _dotted_get(data, f) for f in fields}
     return data
+
+
+def _csv_cell(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (dict, list)):
+        return jsonlib.dumps(value, ensure_ascii=False, default=str)
+    return str(value)
 
 
 def _md_cell(value: Any) -> str:

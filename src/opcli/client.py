@@ -15,6 +15,8 @@ Responsibilities:
 from __future__ import annotations
 
 import json as jsonlib
+import random
+import time
 from typing import Any, Callable, Iterator
 
 import httpx
@@ -24,6 +26,7 @@ from .errors import (
     ApiError,
     AuthError,
     ConflictError,
+    DryRun,
     NotFoundError,
     OpError,
     ValidationError,
@@ -32,6 +35,11 @@ from .errors import (
 Json = dict[str, Any]
 
 USER_AGENT = f"agent-tool-openproject-cli/{__version__}"
+
+_WRITE_METHODS = ("POST", "PATCH", "PUT", "DELETE")
+_IDEMPOTENT = ("GET", "HEAD", "PUT", "DELETE")
+_TRANSIENT_STATUS = {429, 502, 503, 504}
+_RETRYABLE_EXC = (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.WriteTimeout, httpx.PoolTimeout, httpx.RemoteProtocolError)
 
 
 class Client:
@@ -42,9 +50,15 @@ class Client:
         *,
         verify_ssl: bool = True,
         timeout: float = 60.0,
+        dry_run: bool = False,
+        max_retries: int = 3,
+        backoff: float = 0.5,
     ):
         self.base = base_url.rstrip("/")
         self.api_root = self.base + "/api/v3"
+        self.dry_run = dry_run
+        self.max_retries = max_retries
+        self.backoff = backoff
         self._http = httpx.Client(
             auth=httpx.BasicAuth("apikey", token),
             verify=verify_ssl,
@@ -84,28 +98,30 @@ class Client:
         headers: dict[str, str] | None = None,
         parse: bool = True,
     ) -> Any:
+        method = method.upper()
         url = self.url(path)
         clean_params = {k: v for k, v in (params or {}).items() if v is not None}
+
+        # --dry-run: show the write that would happen, don't perform it. Reads
+        # still run so names/lockVersion resolve and the shown request is real.
+        if self.dry_run and method in _WRITE_METHODS:
+            raise DryRun(
+                {
+                    "method": method,
+                    "url": url,
+                    "params": clean_params or None,
+                    "body": json if json is not None else ("<multipart upload>" if files else None),
+                }
+            )
+
         # OpenProject rejects body-less writes with 406 unless a JSON content-type
         # is present. Set it for JSON writes (but never for multipart uploads,
         # where httpx must supply the multipart boundary itself).
         eff_headers = dict(headers or {})
-        if files is None and method.upper() in ("POST", "PATCH", "PUT"):
+        if files is None and method in ("POST", "PATCH", "PUT"):
             eff_headers.setdefault("Content-Type", "application/json")
-        try:
-            resp = self._http.request(
-                method,
-                url,
-                params=clean_params or None,
-                json=json,
-                data=data,
-                files=files,
-                headers=eff_headers or None,
-            )
-        except httpx.ConnectError as exc:
-            raise ApiError(f"cannot connect to {self.base}: {exc}") from exc
-        except httpx.HTTPError as exc:
-            raise ApiError(f"request to {url} failed: {exc}") from exc
+
+        resp = self._send_with_retries(method, url, clean_params, json, data, files, eff_headers)
 
         if resp.status_code >= 400:
             self._raise_for_error(resp)
@@ -118,6 +134,42 @@ class Client:
         if "json" in ctype:
             return resp.json()
         return resp.content
+
+    # ---- transport with retry/backoff --------------------------------
+    def _send_with_retries(self, method, url, params, json, data, files, headers) -> httpx.Response:
+        """Send, retrying transient failures (connection errors, 429, and 5xx
+        for idempotent methods) with exponential backoff + Retry-After."""
+        attempt = 0
+        while True:
+            try:
+                resp = self._http.request(
+                    method, url, params=params or None, json=json, data=data, files=files, headers=headers or None
+                )
+            except _RETRYABLE_EXC as exc:
+                # a connection error means the request didn't land — safe to retry any method
+                if attempt < self.max_retries:
+                    self._backoff_sleep(attempt, None)
+                    attempt += 1
+                    continue
+                raise ApiError(f"cannot reach {self.base}: {exc}") from exc
+            except httpx.HTTPError as exc:
+                raise ApiError(f"request to {url} failed: {exc}") from exc
+
+            retryable = resp.status_code == 429 or (resp.status_code in _TRANSIENT_STATUS and method in _IDEMPOTENT)
+            if retryable and attempt < self.max_retries:
+                self._backoff_sleep(attempt, resp.headers.get("Retry-After"))
+                attempt += 1
+                continue
+            return resp
+
+    def _backoff_sleep(self, attempt: int, retry_after: str | None) -> None:
+        delay = self.backoff * (2 ** attempt)
+        if retry_after:
+            try:
+                delay = max(delay, float(retry_after))
+            except ValueError:
+                pass
+        time.sleep(min(delay, 30.0) + random.uniform(0, 0.25))
 
     # ---- error mapping -----------------------------------------------
     def _raise_for_error(self, resp: httpx.Response) -> None:

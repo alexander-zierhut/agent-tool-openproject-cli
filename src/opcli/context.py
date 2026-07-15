@@ -29,7 +29,7 @@ class AppContext:
         fmt = self._resolve_format(output, interactive)
         env_fields = os.environ.get("OPCLI_CLI_FIELDS")
         fields = env_fields.split(",") if env_fields else None
-        self.emitter = Emitter(fmt, color=color, fields=fields)
+        self.emitter = Emitter(fmt, color=color, fields=fields, stream=os.environ.get("OPCLI_STREAM") == "1")
         self._client: Optional[Client] = None
 
     # ---- output-format resolution ------------------------------------
@@ -108,7 +108,10 @@ class AppContext:
                 f"no API token for profile '{prof.name}'. Run `openproject auth login` "
                 f"(or set OPCLI_TOKEN)."
             )
-        self._client = Client(prof.base_url, token, verify_ssl=prof.verify_ssl)
+        self._client = Client(
+            prof.base_url, token, verify_ssl=prof.verify_ssl,
+            dry_run=os.environ.get("OPCLI_DRY_RUN") == "1",
+        )
         return self._client
 
     def close(self) -> None:

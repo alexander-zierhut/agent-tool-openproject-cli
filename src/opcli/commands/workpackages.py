@@ -59,6 +59,10 @@ def list_wps(
         "filters": wpfilters.encode(filters),
         "sortBy": json.dumps([[sort, "desc" if desc else "asc"]]),
     }
+    if obj.emitter.stream:
+        items = client.paginate("work_packages", params=params, limit=limit or None)
+        obj.emitter.stream_json(serialize.work_package(w, include_description=False) for w in items)
+        return
     rows = [
         serialize.work_package(w, include_description=False)
         for w in client.collect("work_packages", params=params, limit=limit or None)

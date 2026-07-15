@@ -55,6 +55,10 @@ class Config:
     current_profile: str = DEFAULT_PROFILE
     profiles: dict[str, Profile] = field(default_factory=dict)
     default_format: str | None = None  # json | table | markdown; None = not yet chosen
+    # sticky session context: option-name -> default value, applied to later
+    # commands (see `openproject context`). `contexts` holds named, saved ones.
+    context: dict = field(default_factory=dict)
+    contexts: dict = field(default_factory=dict)
 
     # ---- persistence -------------------------------------------------
     @classmethod
@@ -77,6 +81,8 @@ class Config:
                 current_profile=raw.get("current_profile", DEFAULT_PROFILE),
                 profiles=profiles,
                 default_format=raw.get("default_format"),
+                context=raw.get("context") or {},
+                contexts=raw.get("contexts") or {},
             )
         except (ValueError, KeyError, TypeError, AttributeError) as exc:
             raise ConfigError(f"malformed config at {path}: {exc}") from exc
@@ -87,6 +93,8 @@ class Config:
         data: dict[str, Any] = {
             "current_profile": self.current_profile,
             "default_format": self.default_format,
+            "context": self.context,
+            "contexts": self.contexts,
             "profiles": {
                 name: {
                     "base_url": p.base_url,

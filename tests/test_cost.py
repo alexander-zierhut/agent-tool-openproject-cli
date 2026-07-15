@@ -33,6 +33,25 @@ def test_cost_report_sums_and_bills(op, wp, tmp_path):
     assert person["amount"] == pytest.approx(person["hours"] * 120, abs=0.01)
 
 
+def test_cost_report_detailed_with_custom_fields(op, wp):
+    # requires a time-entry custom field (seeded as "Cost Center")
+    cfs = op(["cf", "time"]).ok().json
+    cc = next((c for c in cfs if c.get("name") == "Cost Center"), None)
+    if not cc:
+        pytest.skip("time-entry custom field 'Cost Center' not seeded")
+    key = cc["key"]
+    op(
+        ["time", "add", "2", "--work-package", str(wp["id"]), "--activity", "Development",
+         "--custom-fields", json.dumps({key: "CC-TEST-9"})]
+    ).ok()
+    month = dt.date.today().strftime("%Y-%m")
+    rows = op(["cost", "report", "--month", month, "--user", "me", "--detailed"]).ok().json
+    assert isinstance(rows, list) and rows
+    # the custom field appears (by its friendly name) with our value
+    assert any(r.get("Cost Center") == "CC-TEST-9" for r in rows)
+    assert all("hours" in r and "activity" in r for r in rows)
+
+
 def test_cost_report_hours_only_without_rates(op, wp):
     op(["time", "add", "1", "--work-package", str(wp["id"]), "--activity", "Development"]).ok()
     month = dt.date.today().strftime("%Y-%m")

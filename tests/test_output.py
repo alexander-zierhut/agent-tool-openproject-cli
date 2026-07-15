@@ -93,3 +93,35 @@ def test_fields_after_command(op, wp):
     # --fields works after the subcommand too
     got = op(["wp", "get", str(wp["id"]), "--fields", "id"]).ok().json
     assert got == {"id": wp["id"]}
+
+
+# ---- --dry-run ----
+def test_dry_run_does_not_create(op, project):
+    marker = "DRYRUN-MARKER-9f3"
+    res = op(["wp", "create", marker, "--project", project["identifier"], "--dry-run"]).ok().json
+    assert res["dryRun"] is True
+    assert res["request"]["method"] == "POST"
+    assert res["request"]["body"]["subject"] == marker
+    # nothing was actually created
+    found = op(["search", "wp", marker, "--all"]).ok().json
+    assert not any(marker in (w.get("subject") or "") for w in found)
+
+
+# ---- csv / stream ----
+def test_csv_output(op, project, wp):
+    res = op(
+        ["search", "wp", "--project", project["identifier"], "--all", "-o", "csv", "--fields", "id,subject"],
+        output=None,
+    ).ok()
+    lines = [l for l in res.stdout.strip().splitlines() if l.strip()]
+    assert lines[0] == "id,subject"
+    assert any(str(wp["id"]) in l for l in lines[1:])
+
+
+def test_stream_ndjson(op, project, wp):
+    res = op(
+        ["search", "wp", "--project", project["identifier"], "--all", "--stream", "--fields", "id"], output=None
+    ).ok()
+    lines = [l for l in res.stdout.strip().splitlines() if l.strip()]
+    assert lines
+    assert all(set(json.loads(l).keys()) == {"id"} for l in lines)

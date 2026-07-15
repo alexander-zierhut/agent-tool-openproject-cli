@@ -46,6 +46,10 @@ def _render(obj, client, filters, *, sort, asc, group_by, limit, count, raw):
         doc = client.get("work_packages", params=params)
         obj.emitter.emit({"total": doc.get("total", 0), "filters": filters})
         return
+    if obj.emitter.stream:
+        items = client.paginate("work_packages", params=params, limit=limit or None)
+        obj.emitter.stream_json(items if raw else (serialize.work_package(w, include_description=False) for w in items))
+        return
     elements = client.collect("work_packages", params=params, limit=limit or None)
     if raw:
         obj.emitter.emit(elements)

@@ -22,9 +22,11 @@ OUTPUT CONTRACT (important for scripting/agents)
   - stdout is JSON by default — parse it.
   - Errors go to stderr as JSON with a non-zero exit code: {"error": "...", "status": 404}.
   - Exit codes: 0 ok · 3 config · 4 auth · 5 not-found · 6 conflict(lockVersion) · 7 validation · 1 other.
-  - Change format anywhere on the line: `-o table`, `-o markdown` (or `-f markdown`).
+  - Change format anywhere on the line: `-o table`, `-o markdown`, `-o csv` (or `-f ...`).
   - Trim output to what you need: `--fields id,subject,status,assignee.name` (dotted paths ok).
   - Get just a count: add `--count` to `search wp`.
+  - Large result sets: add `--stream` for NDJSON (one JSON object per line).
+  - PREVIEW a write without doing it: add `--dry-run` — prints the exact request and exits 0.
 
 AUTHENTICATE
   Non-interactive (best for agents/CI — no keyring, never prompts):
@@ -60,7 +62,7 @@ KEY GOTCHAS (save yourself a round-trip)
     multiplies hours by a rate table you pass with --rates.
   - Anything not wrapped: `openproject raw {get,post,patch,delete} <path> [-d JSON]`.
 
-TOPICS:  search · wp · time · comments · projects · costs · customfields · output · auth · notifications
+TOPICS:  search · wp · time · comments · projects · costs · customfields · context · output · auth · notifications
 """
 
 TOPICS: dict[str, str] = {
@@ -169,6 +171,26 @@ AUTH & PROFILES
   Env (non-interactive, no keyring): OPCLI_BASE_URL, OPCLI_TOKEN (+ OPCLI_PROFILE).
   Multiple instances: `openproject -p prod wp list` targets a saved profile.
   Get a token in OpenProject: My account -> Access tokens -> API.
+""",
+    "context": """\
+SESSION CONTEXT — sticky defaults so you stop repeating flags
+  A CLI has no live process, so "context" = durable saved defaults (not a running
+  session). It's a map of option -> value auto-applied to later commands.
+
+  set:    openproject context set --project webshop --assignee me
+  show:   openproject context show          # ALWAYS check this to see active defaults
+  clear:  openproject context clear         |  unset one: openproject context unset project
+  save:   openproject context save sprint   # name the current context
+  use:    openproject context use sprint    # switch to a saved one   |  list: context list
+
+  How it applies: for any command with a matching option (--project, --user,
+  --assignee, --status, --priority, --author, --query), the context value fills it
+  IF you don't pass that flag. Explicit flags always win. Use the global
+  --no-context to ignore the context for one command.
+
+  AGENT NOTE: context is IMPLICIT state that changes command behaviour (e.g. scoping
+  results to a project). If output looks wrongly scoped, run `openproject context
+  show` or add `--no-context`. It is always inspectable and overridable.
 """,
     "notifications": """\
 NOTIFICATIONS (in-app)

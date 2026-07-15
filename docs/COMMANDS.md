@@ -8,6 +8,7 @@ _Auto-generated from the CLI (`python scripts/gen_docs.py`). Every command also 
 - [`auth`](#auth) — Log in, log out, inspect credentials.
 - [`cf`](#cf) — Inspect custom fields / resource schemas.
 - [`comment`](#comment) — Add, edit, list work-package comments.
+- [`context`](#context) — Sticky session defaults (project/user/filters) reused across commands.
 - [`cost`](#cost) — Time & cost reporting per person/project (invoicing).
 - [`filelink`](#filelink) — Nextcloud/file-storage links on work packages.
 - [`guide`](#guide) — Built-in operating guide — how to use this CLI without external docs.
@@ -161,11 +162,70 @@ List activities/comments for a work package (oldest first).
 | --- | --- |
 | `--comments-only`, `--all-activity` | Only entries with a comment. |
 
+## `context`
+
+### `openproject context clear`
+
+Clear the active context entirely.
+
+### `openproject context list`
+
+List saved contexts.
+
+### `openproject context rm`
+
+Delete a saved context.
+
+**Arguments:** `name` (required)
+
+### `openproject context save`
+
+Save the active context under a name for later reuse.
+
+**Arguments:** `name` (required)
+
+### `openproject context set`
+
+Set/merge sticky defaults. Applies to later commands' matching options.
+
+Example: openproject context set --project webshop --assignee me
+Then `openproject wp list` behaves like `wp list --project webshop --assignee me`.
+
+| Option | Description |
+| --- | --- |
+| `--project`, `-P` | Default project. |
+| `--user`, `-u` | Default user (time/cost). |
+| `--assignee`, `-a` | Default assignee. |
+| `--author` | Default author. |
+| `--status`, `-s` | Default status filter. |
+| `--priority` | Default priority. |
+| `--query`, `-q` | Default text query (wp list). |
+| `--set` | Generic key=value (repeatable). |
+
+### `openproject context show`
+
+Show the active context (the defaults currently applied).
+
+### `openproject context unset`
+
+Remove one key from the active context.
+
+**Arguments:** `key` (required)
+
+### `openproject context use`
+
+Load a saved context as the active one.
+
+**Arguments:** `name` (required)
+
 ## `cost`
 
 ### `openproject cost report`
 
 Summarise hours (and billable cost) per person for a period — for invoicing.
+
+`--detailed` emits one row per time entry with its custom fields included —
+something OpenProject's own reports can't export. Pair with `-o csv`.
 
 | Option | Description |
 | --- | --- |
@@ -176,6 +236,7 @@ Summarise hours (and billable cost) per person for a period — for invoicing.
 | `--project`, `-P` | Restrict to one project. |
 | `--rates` | JSON rate table for billable amounts. |
 | `--by-project`, `--no-by-project` | Break each person down by project. |
+| `--detailed` | One row per time entry INCLUDING its custom fields (great with -o csv). |
 
 ## `filelink`
 
@@ -614,6 +675,7 @@ Provide --work-package OR --project. Date defaults to today (`--date 2026-07-10`
 | `--activity` | Activity name (e.g. Development). |
 | `--comment`, `-m` | Comment. |
 | `--user`, `-u` | Log on behalf of another user (needs permission). |
+| `--custom-fields` | JSON of customFieldN values (see `cf time`). |
 
 ### `openproject time delete`
 
@@ -637,6 +699,7 @@ Edit a time entry (partial; no lockVersion).
 | `--date` | New date YYYY-MM-DD. |
 | `--activity` | New activity name. |
 | `--comment`, `-m` | New comment. |
+| `--custom-fields` | JSON of customFieldN values. |
 
 ### `openproject time get`
 

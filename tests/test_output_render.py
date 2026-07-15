@@ -141,3 +141,47 @@ def test_emitter_fields_markdown_overrides_columns(capsys):
 def test_emitter_fields_strip_and_empty():
     e = Emitter(OutputFormat.json, fields=[" id ", "", "name"])
     assert e.fields == ["id", "name"]
+
+
+# ---- csv ----
+def test_csv_output(capsys):
+    Emitter(OutputFormat.csv).emit(ROWS, columns=COLS)
+    lines = capsys.readouterr().out.strip().splitlines()
+    assert lines[0] == "ID,Name"
+    assert lines[1] == "1,alpha"
+    assert lines[2] == "2,beta"
+
+
+def test_csv_without_columns_uses_keys(capsys):
+    Emitter(OutputFormat.csv).emit([{"a": 1, "b": 2}, {"a": 3, "b": 4}])
+    lines = capsys.readouterr().out.strip().splitlines()
+    assert lines[0] == "a,b"
+    assert lines[1] == "1,2"
+
+
+def test_csv_cell():
+    from opcli.output import _csv_cell
+
+    assert _csv_cell(None) == ""
+    assert _csv_cell(True) == "true"
+    assert _csv_cell(False) == "false"
+    assert _csv_cell({"a": 1}) == '{"a": 1}'
+    assert _csv_cell(3) == "3"
+
+
+def test_coerce_csv():
+    assert OutputFormat.coerce("csv") == OutputFormat.csv
+
+
+# ---- stream (NDJSON) ----
+def test_stream_json(capsys):
+    n = Emitter(OutputFormat.json).stream_json([{"id": 1}, {"id": 2}])
+    lines = capsys.readouterr().out.strip().splitlines()
+    assert n == 2
+    assert json.loads(lines[0]) == {"id": 1}
+    assert json.loads(lines[1]) == {"id": 2}
+
+
+def test_stream_json_honours_fields(capsys):
+    Emitter(OutputFormat.json, fields=["id"]).stream_json([{"id": 1, "x": 9}])
+    assert json.loads(capsys.readouterr().out.strip()) == {"id": 1}

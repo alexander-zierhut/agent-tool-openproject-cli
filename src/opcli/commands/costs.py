@@ -26,13 +26,30 @@ from pathlib import Path
 
 import typer
 
-from .. import hal
+from .. import hal, serialize
 from ..duration import iso_to_hours
 from ..errors import OpError
 from ._shared import ctx_obj
 from .time_entries import query_time_entries
 
 app = typer.Typer(no_args_is_help=True)
+
+
+def _time_entry_cf_names(client, entries: list) -> dict[str, str]:
+    """Map customFieldN -> friendly name for time entries, from the schema."""
+    pid = None
+    for e in entries:
+        pid = hal.link_id(e, "project")
+        if pid:
+            break
+    if pid is None:
+        return {}
+    try:
+        form = client.post("time_entries/form", json={"_links": {"project": {"href": f"/api/v3/projects/{pid}"}}})
+    except OpError:
+        return {}
+    schema = (form.get("_embedded") or {}).get("schema") or {}
+    return {k: (schema[k].get("name") or k) for k in schema if k.startswith("customField")}
 
 
 def _load_rates(path: Path | None) -> dict | None:
@@ -82,8 +99,15 @@ def report(
     project: str = typer.Option(None, "--project", "-P", help="Restrict to one project."),
     rates: Path = typer.Option(None, "--rates", help="JSON rate table for billable amounts."),
     by_project: bool = typer.Option(True, "--by-project/--no-by-project", help="Break each person down by project."),
+    detailed: bool = typer.Option(
+        False, "--detailed", help="One row per time entry INCLUDING its custom fields (great with -o csv)."
+    ),
 ) -> None:
-    """Summarise hours (and billable cost) per person for a period — for invoicing."""
+    """Summarise hours (and billable cost) per person for a period — for invoicing.
+
+    `--detailed` emits one row per time entry with its custom fields included —
+    something OpenProject's own reports can't export. Pair with `-o csv`.
+    """
     obj = ctx_obj(ctx)
     client = obj.client()
     rate_table = _load_rates(rates)
@@ -124,6 +148,43 @@ def report(
                 pass
             project_cache[pid] = info
         return project_cache[pid]
+
+    def rate_for_entry(e) -> float | None:
+        info = user_info(e)
+        pinfo = project_info(e)
+        user_keys = [str(k) for k in (info.get("login"), info.get("name"), info["id"]) if k is not None]
+        project_keys = [str(k) for k in (pinfo.get("identifier"), pinfo["name"], pinfo["id"]) if k is not None]
+        return _rate_for(rate_table, user_keys, project_keys) if rate_table else None
+
+    # ---- detailed: one row per time entry, INCLUDING time-entry custom fields ----
+    if detailed:
+        cf_names = _time_entry_cf_names(client, entries)
+        rows = []
+        for e in entries:
+            te = serialize.time_entry(e)
+            info = user_info(e)
+            hours = iso_to_hours(e.get("hours")) or 0.0
+            rate = rate_for_entry(e)
+            row = {
+                "date": te["spentOn"],
+                "user": info.get("login") or info.get("name"),
+                "userName": info.get("name"),
+                "project": project_info(e)["name"],
+                "workPackage": (te.get("workPackage") or {}).get("id"),
+                "activity": te.get("activity"),
+                "hours": round(hours, 2),
+                "rate": rate,
+                "amount": round(hours * rate, 2) if rate is not None else None,
+                "comment": te.get("comment"),
+            }
+            for key, val in (te.get("customFields") or {}).items():
+                row[cf_names.get(key, key)] = val
+            rows.append(row)
+        base = ["date", "user", "userName", "project", "workPackage", "activity", "hours", "rate", "amount", "comment"]
+        cf_cols = [n for n in cf_names.values() if any(n in r for r in rows)]
+        columns = [(c, c) for c in base + cf_cols]
+        obj.emitter.emit(rows, columns=columns, empty="(no time entries)")
+        return
 
     people: dict[int, dict] = {}
     grand_hours = 0.0

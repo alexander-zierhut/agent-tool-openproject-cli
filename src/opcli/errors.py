@@ -27,6 +27,18 @@ class OpError(Exception):
         return out
 
 
+class DryRun(Exception):
+    """Raised by the client in --dry-run mode instead of performing a write.
+
+    Carries the request that *would* have been sent so the CLI can print it and
+    exit 0 without touching the server.
+    """
+
+    def __init__(self, request: dict):
+        super().__init__("dry run")
+        self.request = request
+
+
 class ConfigError(OpError):
     """Something is wrong with configuration or stored credentials."""
 

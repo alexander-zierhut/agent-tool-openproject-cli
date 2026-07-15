@@ -54,6 +54,27 @@ format prompt only appears on an interactive TTY, so pipelines are never blocked
   openproject search wp --project x --overdue --count   # -> {"total": 7, ...}
   ```
 - **`--limit N`** caps rows (`--limit 0` = all, paginated for you).
+- **`--stream`** emits NDJSON (one object per line) for large result sets, so you
+  can process incrementally. **`-o csv`** for spreadsheet-style output.
+
+## Preview writes before doing them
+
+Add **`--dry-run`** to any mutating command: the CLI resolves everything (names →
+hrefs, `lockVersion`) and prints the exact request it *would* send, then exits 0
+without touching the server. Great for planning a change, then re-running without
+the flag to apply it.
+
+```bash
+openproject wp update 42 --status Closed --assignee jane.doe --dry-run
+# -> {"dryRun": true, "request": {"method": "PATCH", "url": "...", "body": {...}}}
+```
+
+## Watch out for session context
+
+`openproject context` sets **sticky defaults** (project/user/filters) that are
+applied to later commands implicitly. This is convenient for humans but is hidden
+state that changes results. If scoping looks off, run `openproject context show`,
+or pass `--no-context` to ignore it for one command. Explicit flags always win.
 
 ## Don't guess filters — discover them
 

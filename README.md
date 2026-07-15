@@ -30,8 +30,13 @@ first-class JSON output so it slots straight into automation and AI agents.
 - 🔎 **Discoverable search** — filter with plain flags (`--mine`, `--overdue`,
   `--updated-since 7d`), one-word presets (`search mine`), or `--where` expressions.
   Never memorise filter JSON: `search fields`, `search operators`, `search values`.
-- 🖇️ **Three output formats** — `json` (default), `table`, and `markdown`; pick per
-  command with `-f`, set a default, or select exact `--fields`.
+- 🖇️ **Four output formats** — `json` (default), `table`, `markdown`, and `csv`;
+  pick per command with `-f`, set a default, select exact `--fields`, or `--stream`
+  NDJSON for big result sets.
+- 🧪 **Safe by default** — `--dry-run` previews any write; the client retries
+  transient failures; and `openproject context` gives sticky per-session defaults.
+- 💶 **Invoicing extras** — per-person cost reports, and a detailed CSV export that
+  includes **time-entry custom fields** (which OpenProject's own reports can't).
 - 🔐 **Safe credentials** — API token stored in the OS keyring (Secret Service /
   macOS Keychain / Windows Credential Locker), with a `0600` file fallback.
 - 🧰 **Escape hatch** — `openproject raw` calls any endpoint the typed commands
@@ -296,6 +301,17 @@ openproject cost report --from 2026-07-01 --to 2026-07-31 --user jane.doe --rate
 Without `--rates` it reports hours only. Most specific rate wins:
 project+user → project default → user → global default.
 
+**Detailed export with time-entry custom fields** — one row per entry, including
+the time entry's custom fields (something OpenProject's own reports can't export).
+Perfect for invoicing spreadsheets:
+
+```bash
+openproject cost report --month 2026-07 --rates rates.json --detailed -o csv > july.csv
+# columns: date,user,project,workPackage,activity,hours,rate,amount,comment,Cost Center,Billable,…
+```
+
+Set the custom fields when logging: `openproject time add 2 -w 42 --custom-fields '{"customField3":"CC-1000","customField4":true}'` (discover them with `openproject cf time`).
+
 ### Notifications — `openproject notify`
 
 ```bash
@@ -360,17 +376,43 @@ openproject auth logout --name prod
 
 ### Output format & settings — `openproject settings`
 
-Three output formats: **`json`** (default, best for scripts/agents),
-**`table`** (human-readable terminal tables), and **`markdown`** (paste into
-docs/PRs). Choose per command, or set a persistent default.
+Four output formats: **`json`** (default), **`table`**, **`markdown`**, and
+**`csv`**. Choose per command, or set a persistent default.
 
 ```bash
 openproject wp list -o table                 # global flag (before the command)
 openproject wp list --format markdown        # --format/-f works AFTER any command too
-openproject wp get 42 -f md
+openproject search wp --mine -o csv          # spreadsheet export
+openproject wp get 42 --fields id,subject,assignee.name    # pick exact fields (dotted ok)
 
 openproject settings set-format table        # persist a default
 openproject settings show                    # current default, config path, profiles
+```
+
+**Preview & scale flags** (work anywhere on the line):
+
+```bash
+openproject wp update 42 --status Closed --dry-run   # prints the request, sends nothing
+openproject search wp --project big --stream          # NDJSON, one object per line, as fetched
+```
+
+The client also **retries** transient failures (429 rate-limits + 5xx on reads)
+with backoff, honoring `Retry-After`.
+
+### Session context — `openproject context`
+
+Stop repeating `--project`/`--user`/filters: set them once and they apply to
+later commands as defaults (explicit flags always win; `--no-context` bypasses).
+
+```bash
+openproject context set --project webshop --assignee me
+openproject context show               # see the active defaults
+openproject wp list                    # behaves like: wp list --project webshop --assignee me
+openproject wp list --project other    # explicit flag wins
+openproject --no-context wp list       # ignore the context for one command
+
+openproject context save sprint        # name it, switch between saved contexts
+openproject context use sprint
 ```
 
 On the **first interactive run** the CLI asks which default format you'd like and
