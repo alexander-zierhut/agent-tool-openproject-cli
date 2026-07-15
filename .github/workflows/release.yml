@@ -1,0 +1,99 @@
+name: release
+
+# Build a self-contained `op` binary for each platform and attach it to the
+# GitHub Release when you push a version tag (e.g. `git tag v0.1.0 && git push --tags`).
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset: openproject-linux-x86_64
+          - os: macos-latest      # Apple Silicon runners -> arm64
+            asset: openproject-macos-arm64
+          - os: macos-13          # Intel
+            asset: openproject-macos-x86_64
+          - os: windows-latest
+            asset: openproject-windows-x86_64.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install project + PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . pyinstaller
+
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
+        run: bash scripts/build_binary.sh
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          pyinstaller --noconfirm --clean --onefile --name openproject `
+            --paths src --collect-all keyring `
+            --hidden-import keyring.backends.Windows `
+            --hidden-import keyring.backends.chainer `
+            --hidden-import keyring.backends.fail `
+            --distpath dist --workpath build/pyinstaller --specpath build `
+            packaging/op_launcher.py
+
+      - name: Rename asset
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then mv dist/openproject.exe "dist/${{ matrix.asset }}";
+          else mv dist/openproject "dist/${{ matrix.asset }}"; fi
+
+      - name: Smoke test
+        shell: bash
+        run: "dist/${{ matrix.asset }} --help >/dev/null && echo ok"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+
+  # Python wheel + sdist (for pip/pipx installs) attached to the release.
+  python-dist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build
+      - run: python -m build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/*
+
+  release:
+    needs: [build, python-dist]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts, merge-multiple: true }
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+      # To also publish to PyPI, add a PYPI_API_TOKEN secret and uncomment:
+      # - uses: pypa/gh-action-pypi-publish@release/v1
+      #   with:
+      #     password: ${{ secrets.PYPI_API_TOKEN }}
+      #     packages-dir: artifacts

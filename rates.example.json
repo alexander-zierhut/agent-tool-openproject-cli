@@ -1,0 +1,14 @@
+{
+  "currency": "EUR",
+  "default": 90,
+  "users": {
+    "admin": 120,
+    "jane.doe": 100
+  },
+  "projects": {
+    "client-x": {
+      "default": 100,
+      "admin": 110
+    }
+  }
+}

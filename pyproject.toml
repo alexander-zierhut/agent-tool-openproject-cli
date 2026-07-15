@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openproject-cli"
+version = "0.1.0"
+description = "Agent-friendly command-line interface for OpenProject (work packages, projects, time, costs, search, and more)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Zierhut IT" }]
+dependencies = [
+    "typer>=0.12",
+    "httpx>=0.27",
+    "keyring>=25",
+    "rich>=13",
+    "python-dateutil>=2.9",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8",
+    "pytest-timeout>=2.3",
+]
+build = [
+    "pyinstaller>=6",
+]
+
+[project.scripts]
+# Only `openproject` — the short name `op` is intentionally NOT claimed to avoid
+# colliding with other tools that use it (e.g. an existing OpenProject/1Password
+# CLI). Add your own alias if you want a shorter command.
+openproject = "opcli.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"
+markers = [
+    "integration: talks to a live OpenProject instance (requires OPCLI_BASE_URL + OPCLI_TOKEN)",
+]
+timeout = 120

@@ -1,0 +1,97 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast, hermetic unit tests across supported Python versions.
+  unit:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e '.[test]'
+      - name: Unit tests (no live instance)
+        run: python -m pytest -m "not integration" -q
+
+  # Full suite against a real OpenProject booted in the runner.
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e '.[test]'
+
+      - name: Start OpenProject
+        run: docker compose up -d
+
+      - name: Wait for OpenProject to seed & become healthy
+        run: |
+          echo "waiting for health (first boot seeds the DB, ~5 min)…"
+          for i in $(seq 1 80); do
+            if curl -sf http://localhost:8090/health_checks/default >/dev/null; then
+              echo "healthy after ${i} checks"; exit 0
+            fi
+            sleep 10
+          done
+          echo "OpenProject did not become healthy in time"; docker compose logs --tail=50 openproject; exit 1
+
+      - name: Mint tokens & seed test data
+        run: |
+          # rails may need a few tries right after health flips
+          for i in $(seq 1 10); do
+            TOK=$(./scripts/get_admin_token.sh 2>/dev/null | grep '^APITOKEN=' | cut -d= -f2 || true)
+            [ -n "$TOK" ] && break; sleep 10
+          done
+          test -n "$TOK" || { echo "could not mint admin token"; exit 1; }
+          echo "OPCLI_TOKEN=$TOK" >> "$GITHUB_ENV"
+          ./scripts/seed_test_data.sh
+          JANE=$(./scripts/get_admin_token.sh jane.doe 2>/dev/null | grep '^APITOKEN=' | cut -d= -f2 || true)
+          [ -n "$JANE" ] && echo "OPCLI_SECOND_TOKEN=$JANE" >> "$GITHUB_ENV"
+          echo "OPCLI_BASE_URL=http://localhost:8090" >> "$GITHUB_ENV"
+
+      - name: Run full test suite
+        run: python -m pytest -q
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --tail=100 openproject
+
+  # Verify the distributables build and run.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build wheel + sdist
+        run: |
+          pip install build
+          python -m build
+          ls -l dist
+      - name: Install the wheel in a clean venv and smoke-test
+        run: |
+          python -m venv /tmp/clean
+          /tmp/clean/bin/pip install dist/*.whl
+          /tmp/clean/bin/openproject --help >/dev/null && echo "wheel entry point OK"
+      - name: Build the single-file binary
+        run: bash scripts/build_binary.sh
+      - name: Smoke-test the binary
+        run: ./dist/openproject --help >/dev/null && echo "binary OK"

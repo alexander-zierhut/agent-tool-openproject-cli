@@ -1,0 +1,49 @@
+# Local OpenProject instance for developing & testing the `op` CLI.
+#
+# Uses the official all-in-one Community image (bundles Postgres, memcached,
+# web + worker via supervisord). First boot seeds the DB and takes a few
+# minutes; watch progress with:  docker compose logs -f openproject
+#
+# Web UI:      http://localhost:8090
+# API root:    http://localhost:8090/api/v3
+# Admin login: admin / <see OPENPROJECT_SEED__ADMIN__USER__PASSWORD below>
+#
+# After boot, mint an admin API token with:  ./scripts/get_admin_token.sh
+
+services:
+  openproject:
+    image: openproject/openproject:15
+    container_name: op-cli-openproject
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    environment:
+      # --- core ---
+      OPENPROJECT_SECRET_KEY_BASE: "op-cli-local-dev-secret-key-base-not-for-production"
+      OPENPROJECT_HOST__NAME: "localhost:8090"
+      OPENPROJECT_HTTPS: "false"
+      OPENPROJECT_DEFAULT__LANGUAGE: "en"
+      # --- seed a known admin password so we can mint an API token unattended ---
+      OPENPROJECT_SEED__ADMIN__USER__PASSWORD: "AdminPassw0rd!"
+      OPENPROJECT_SEED__ADMIN__USER__PASSWORD__RESET: "false"
+      # keep the first-run wizard/consent out of the way for automated use
+      OPENPROJECT_SEED__ADMIN__USER__MAIL: "admin@example.net"
+      # allow API basic auth (apikey:<token>) — on by default, set explicitly
+      OPENPROJECT_APIV3__ENABLE__BASIC__AUTH: "true"
+      # quieter first boot
+      OPENPROJECT_SEED__LOCALE: "en"
+      RAILS_MIN_THREADS: "4"
+      RAILS_MAX_THREADS: "16"
+    volumes:
+      - op_pgdata:/var/openproject/pgdata
+      - op_assets:/var/openproject/assets
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health_checks/default"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 300s
+
+volumes:
+  op_pgdata:
+  op_assets:
