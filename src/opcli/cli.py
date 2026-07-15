@@ -7,9 +7,16 @@ import sys
 
 import typer
 
+from . import __version__
 from .context import AppContext
 from .errors import OpError
 from .output import OutputFormat, print_error
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(__version__)
+        raise typer.Exit()
 
 app = typer.Typer(
     name="openproject",
@@ -50,6 +57,9 @@ def _root(
         None, "--profile", "-p", help="Configuration profile (overrides the active one)."
     ),
     no_color: bool = typer.Option(False, "--no-color", help="Disable coloured output."),
+    version: bool = typer.Option(
+        None, "--version", "-V", callback=_version_callback, is_eager=True, help="Show version and exit."
+    ),
 ) -> None:
     if profile:
         os.environ["OPCLI_PROFILE"] = profile

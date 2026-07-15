@@ -51,6 +51,17 @@ def test_guide_unknown_topic_exits_2():
     assert exc.value.exit_code == 2
 
 
+def test_version_flag_no_auth():
+    import os
+
+    from opcli import __version__
+
+    env = {k: v for k, v in os.environ.items() if k not in ("OPCLI_TOKEN", "OPCLI_BASE_URL")}
+    proc = subprocess.run([sys.executable, "-m", "opcli", "--version"], capture_output=True, text=True, env=env)
+    assert proc.returncode == 0
+    assert proc.stdout.strip() == __version__
+
+
 def test_guide_wired_into_cli_without_auth():
     # runs the real CLI with NO token/base-url configured — guide must still work
     import os
