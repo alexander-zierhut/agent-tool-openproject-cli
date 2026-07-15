@@ -72,12 +72,35 @@ openproject wp update 42 --status Closed --assignee jane.doe --dry-run
 # -> {"dryRun": true, "request": {"method": "PATCH", "url": "...", "body": {...}}}
 ```
 
-## Watch out for session context
+## Session context (sticky defaults) — and its caveat
 
-`openproject context` sets **sticky defaults** (project/user/filters) that are
-applied to later commands implicitly. This is convenient for humans but is hidden
-state that changes results. If scoping looks off, run `openproject context show`,
-or pass `--no-context` to ignore it for one command. Explicit flags always win.
+`openproject context` stores **sticky defaults** that are auto-applied to later
+commands, so you stop repeating `--project`/`--user`/filters. A CLI has no live
+process, so "context" = durable defaults saved in config, not a running session.
+
+```bash
+openproject context set --project webshop --assignee me   # set/merge defaults
+openproject context show                                   # inspect active defaults
+openproject context unset assignee                         # drop one key
+openproject context clear                                  # drop all
+openproject context save sprint                            # name it
+openproject context use sprint   |   openproject context list   # switch / list
+```
+
+**How it applies:** for any command with a matching option (`--project`,
+`--user`, `--assignee`, `--author`, `--status`, `--priority`, `--query`), the
+context value fills it **only when you don't pass that flag**. So with
+`context set --project webshop`, `openproject wp list` behaves like
+`openproject wp list --project webshop`.
+
+**Caveat for agents — this is implicit state that changes results.** Rules to stay safe:
+
+- **Explicit flags always win** — pass `--project X` to override the context.
+- **`--no-context`** ignores the context entirely for one command.
+- If output looks wrongly scoped (too few / wrong project), run
+  `openproject context show` first, or re-run with `--no-context`.
+- Don't assume a fresh environment is context-free — **check `context show`** at
+  the start of a task, and prefer being explicit in scripts you don't control.
 
 ## Don't guess filters — discover them
 
@@ -122,8 +145,12 @@ openproject time add 1.5 --work-package "$ID" --activity Development --comment "
 # Add a comment without notifying watchers
 openproject comment add "$ID" "Root cause found." --no-notify
 
-# Monthly per-person billing report (rates from a file)
+# Focus a whole task on one project, then work without repeating --project
+openproject context set --project ops        # ... do work ...   openproject context clear
+
+# Monthly per-person billing report (rates from a file); detailed CSV w/ custom fields
 openproject cost report --month 2026-07 --rates rates.json
+openproject cost report --month 2026-07 --rates rates.json --detailed -o csv > invoice.csv
 
 # Anything not wrapped: hit the API directly
 openproject raw get work_packages/"$ID"
