@@ -59,7 +59,10 @@ def add(
     text: str = typer.Argument(..., help="Comment body (markdown)."),
     notify: bool = typer.Option(False, "--notify/--no-notify", help="Send notifications (default off)."),
 ) -> None:
-    """Add a comment to a work package."""
+    """Add a comment (markdown) to a work package.
+
+    Example: openproject comment add 42 "Deployed to **staging** — please retest." --notify
+    """
     obj = ctx_obj(ctx)
     doc = obj.client().post(
         f"work_packages/{wp_id}/activities",
@@ -73,9 +76,13 @@ def add(
 def edit(
     ctx: typer.Context,
     activity_id: int = typer.Argument(..., help="Activity id (from `comment list`)."),
-    text: str = typer.Argument(..., help="New comment body (markdown)."),
+    text: str = typer.Argument(..., help="New comment body."),
 ) -> None:
-    """Edit an existing comment by its activity id."""
+    """Edit a comment. The id is the ACTIVITY id (from `comment list`), not the work-package id.
+
+    Example: openproject comment list 42   # find the activity id, then:
+             openproject comment edit 137 "Corrected note."
+    """
     obj = ctx_obj(ctx)
     # The activity PATCH endpoint expects `comment` as a plain string (unlike the
     # POST add endpoint, which takes a {"raw": ...} Formattable).

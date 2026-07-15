@@ -99,7 +99,12 @@ def create(
     set_: str = typer.Option(None, "--set", help="Raw JSON merged into the create body."),
     notify: bool = typer.Option(False, "--notify", help="Send notifications for this create."),
 ) -> None:
-    """Create a work package."""
+    """Create a work package. Pass names (type/status/priority/assignee) — they're resolved.
+
+    Example: openproject wp create "Fix login" --project webshop --type Bug --assignee me --priority High
+    Custom fields: --custom-fields '{"customField1":"INV-1"}' (discover them with `cf wp`).
+    Note: the assignee must be a member of the project (see `member add`).
+    """
     obj = ctx_obj(ctx)
     client = obj.client()
     pid = resolve.project_id(client, project)
@@ -157,7 +162,11 @@ def update(
     set_: str = typer.Option(None, "--set", help="Raw JSON merged into the patch body."),
     notify: bool = typer.Option(False, "--notify", help="Send notifications for this change."),
 ) -> None:
-    """Update a work package (lockVersion handled automatically)."""
+    """Update a work package. lockVersion is fetched and retried automatically.
+
+    Example: openproject wp update 42 --status "In progress" --assignee jane.doe --done-ratio 50
+    Clear a link with the value 'none' (e.g. --assignee none). Use --set '{...}' for arbitrary fields.
+    """
     obj = ctx_obj(ctx)
     client = obj.client()
 

@@ -5,6 +5,11 @@ loops). This page is the **machine contract** — how to call it reliably and
 cheaply. For the human tutorial see [README](README.md); for every option see
 [docs/COMMANDS.md](docs/COMMANDS.md).
 
+> **No context? Start here:** run **`openproject guide`** — the CLI ships a
+> built-in playbook (output contract, auth, discovery, gotchas, recipes) so an
+> agent can bootstrap from the tool alone, with no external docs. Then
+> `openproject guide <topic>` (search, wp, time, costs, …) for focused cheat-sheets.
+
 ## The output contract
 
 - **stdout is JSON by default.** Parse it directly. Success prints a JSON object

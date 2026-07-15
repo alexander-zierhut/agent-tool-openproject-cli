@@ -127,7 +127,11 @@ def add(
     comment: str = typer.Option(None, "--comment", "-m", help="Comment."),
     user: str = typer.Option(None, "--user", "-u", help="Log on behalf of another user (needs permission)."),
 ) -> None:
-    """Log a time entry against a work package or project."""
+    """Log a time entry. Hours accept decimals (2.5) or ISO-8601 (PT2H30M).
+
+    Example: openproject time add 2.5 --work-package 42 --activity Development --comment "debugging"
+    Provide --work-package OR --project. Date defaults to today (`--date 2026-07-10`).
+    """
     obj = ctx_obj(ctx)
     client = obj.client()
     if not work_package and not project:

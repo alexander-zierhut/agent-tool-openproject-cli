@@ -68,7 +68,8 @@ def patch(
     data_file: Path = typer.Option(None, "--data-file", help="File containing the JSON body."),
     param: list[str] = typer.Option(None, "--param", "-p", help="Query param key=value (repeatable)."),
 ) -> None:
-    """PATCH an endpoint."""
+    """PATCH an endpoint. For work packages you MUST include the current lockVersion in the body
+    (fetch it with `raw get work_packages/<id>` first) — unlike `wp update`, which handles it."""
     _run(ctx, "PATCH", path, param, data, data_file)
 
 

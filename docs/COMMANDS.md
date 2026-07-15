@@ -10,6 +10,7 @@ _Auto-generated from the CLI (`python scripts/gen_docs.py`). Every command also 
 - [`comment`](#comment) — Add, edit, list work-package comments.
 - [`cost`](#cost) — Time & cost reporting per person/project (invoicing).
 - [`filelink`](#filelink) — Nextcloud/file-storage links on work packages.
+- [`guide`](#guide) — Built-in operating guide — how to use this CLI without external docs.
 - [`member`](#member) — Project memberships & roles.
 - [`notify`](#notify) — In-app notifications.
 - [`project`](#project) — Create, list, archive projects.
@@ -131,7 +132,9 @@ List custom fields available on work packages of a project/type.
 
 ### `openproject comment add`
 
-Add a comment to a work package.
+Add a comment (markdown) to a work package.
+
+Example: openproject comment add 42 "Deployed to **staging** — please retest." --notify
 
 **Arguments:** `wp_id` (required), `text` (required)
 
@@ -141,7 +144,10 @@ Add a comment to a work package.
 
 ### `openproject comment edit`
 
-Edit an existing comment by its activity id.
+Edit a comment. The id is the ACTIVITY id (from `comment list`), not the work-package id.
+
+Example: openproject comment list 42   # find the activity id, then:
+         openproject comment edit 137 "Corrected note."
 
 **Arguments:** `activity_id` (required), `text` (required)
 
@@ -212,11 +218,22 @@ List file links on a work package.
 
 List configured file storages (Nextcloud etc.).
 
+## `guide`
+
+### `openproject guide`
+
+Built-in operating guide — how to use this CLI without external docs.
+
+**Arguments:** `topic` (optional)
+
 ## `member`
 
 ### `openproject member add`
 
 Add a member to a project with one or more roles.
+
+Do this before assigning work packages — only project members can be assignees.
+Example: openproject member add --project webshop --user jane.doe --role Member
 
 | Option | Description |
 | --- | --- |
@@ -401,7 +418,8 @@ GET an endpoint.
 
 ### `openproject raw patch`
 
-PATCH an endpoint.
+PATCH an endpoint. For work packages you MUST include the current lockVersion in the body
+(fetch it with `raw get work_packages/<id>` first) — unlike `wp update`, which handles it.
 
 **Arguments:** `path` (required)
 
@@ -581,7 +599,10 @@ List available time-entry activities (Development, Management, ...).
 
 ### `openproject time add`
 
-Log a time entry against a work package or project.
+Log a time entry. Hours accept decimals (2.5) or ISO-8601 (PT2H30M).
+
+Example: openproject time add 2.5 --work-package 42 --activity Development --comment "debugging"
+Provide --work-package OR --project. Date defaults to today (`--date 2026-07-10`).
 
 **Arguments:** `hours` (required)
 
@@ -722,7 +743,11 @@ List users assignable to this work package.
 
 ### `openproject wp create`
 
-Create a work package.
+Create a work package. Pass names (type/status/priority/assignee) — they're resolved.
+
+Example: openproject wp create "Fix login" --project webshop --type Bug --assignee me --priority High
+Custom fields: --custom-fields '{"customField1":"INV-1"}' (discover them with `cf wp`).
+Note: the assignee must be a member of the project (see `member add`).
 
 **Arguments:** `subject` (required)
 
@@ -821,7 +846,10 @@ Remove a watcher.
 
 ### `openproject wp update`
 
-Update a work package (lockVersion handled automatically).
+Update a work package. lockVersion is fetched and retried automatically.
+
+Example: openproject wp update 42 --status "In progress" --assignee jane.doe --done-ratio 50
+Clear a link with the value 'none' (e.g. --assignee none). Use --set '{...}' for arbitrary fields.
 
 **Arguments:** `wp_id` (required)
 

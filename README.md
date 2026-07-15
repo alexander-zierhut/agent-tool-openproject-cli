@@ -21,7 +21,8 @@ first-class JSON output so it slots straight into automation and AI agents.
 ### Why this OpenProject CLI?
 
 - 🤖 **Agent-ready** — structured JSON on stdout, structured errors on stderr, and
-  stable exit codes. See [AGENTS.md](AGENTS.md).
+  stable exit codes. Plus a built-in **`openproject guide`** playbook so an agent
+  can learn the tool from the tool itself. See [AGENTS.md](AGENTS.md).
 - 🔎 **Discoverable search** — filter with plain flags (`--mine`, `--overdue`,
   `--updated-since 7d`), one-word presets (`search mine`), or `--where` expressions.
   Never memorise filter JSON: `search fields`, `search operators`, `search values`.

@@ -56,7 +56,11 @@ def add(
     user: str = typer.Option(..., "--user", "-u", help="Principal (login/name/id or 'me')."),
     role: list[str] = typer.Option(..., "--role", "-r", help="Role name (repeatable)."),
 ) -> None:
-    """Add a member to a project with one or more roles."""
+    """Add a member to a project with one or more roles.
+
+    Do this before assigning work packages — only project members can be assignees.
+    Example: openproject member add --project webshop --user jane.doe --role Member
+    """
     obj = ctx_obj(ctx)
     client = obj.client()
     pid = resolve.project_id(client, project)

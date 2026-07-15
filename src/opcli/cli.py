@@ -13,7 +13,18 @@ from .output import OutputFormat, print_error
 
 app = typer.Typer(
     name="openproject",
-    help="Agent-friendly CLI for OpenProject. JSON output by default; use `-o table` for humans.",
+    help=(
+        "Agent-friendly CLI for OpenProject (work packages, projects, time, search, invoicing).\n\n"
+        "Output is JSON on stdout by default (errors are JSON on stderr with a non-zero exit code); "
+        "add `-o table` or `-o markdown`, or trim with `--fields id,subject`. Pass names not ids "
+        "(`--assignee jane.doe`, `--status \"In progress\"`, `me`).\n\n"
+        "New here / no context? Run `openproject guide` for the full playbook, or "
+        "`openproject search fields` to discover what you can filter on."
+    ),
+    epilog=(
+        "Learn more:  `openproject guide`  ·  `openproject guide <topic>`  ·  "
+        "`openproject <group> --help`  ·  discover filters with `openproject search fields`."
+    ),
     no_args_is_help=True,
     add_completion=False,
     pretty_exceptions_show_locals=False,
@@ -42,8 +53,8 @@ def _root(
 ) -> None:
     if profile:
         os.environ["OPCLI_PROFILE"] = profile
-    # Don't prompt for a default format when the user is managing settings.
-    interactive = ctx.invoked_subcommand != "settings" and sys.stdin.isatty() and sys.stdout.isatty()
+    # Don't prompt for a default format for meta commands (settings/guide).
+    interactive = ctx.invoked_subcommand not in ("settings", "guide") and sys.stdin.isatty() and sys.stdout.isatty()
     ctx.obj = AppContext(output=output, color=not no_color, interactive=interactive)
     global _ERROR_FORMAT
     _ERROR_FORMAT = ctx.obj.emitter.fmt
@@ -92,6 +103,7 @@ from .commands import (  # noqa: E402
     costs,
     custom_fields,
     filelinks,
+    guide,
     memberships,
     notifications,
     projects,
@@ -103,6 +115,8 @@ from .commands import (  # noqa: E402
     wiki,
     workpackages,
 )
+
+app.command("guide", help="Built-in operating guide — how to use this CLI without external docs.")(guide.guide)
 
 app.add_typer(auth.app, name="auth", help="Log in, log out, inspect credentials.")
 app.add_typer(projects.app, name="project", help="Create, list, archive projects.")
