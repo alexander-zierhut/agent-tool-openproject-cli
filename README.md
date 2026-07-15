@@ -1,16 +1,20 @@
-# openproject-cli — the agent-ready OpenProject command-line interface
+# openproject — the agent-ready OpenProject CLI
 
 > A fast, scriptable **OpenProject CLI** for managing work packages, projects,
 > time tracking, comments, and per-person cost reports from your terminal — and
 > the first OpenProject command-line tool designed to be driven by **AI agents**
 > (Claude, Cursor, LLM tool-loops) as well as humans.
 
+[![PyPI](https://img.shields.io/pypi/v/agent-tool-openproject-cli)](https://pypi.org/project/agent-tool-openproject-cli/)
 [![CI](https://github.com/alexander-zierhut/agent-tool-openproject-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/alexander-zierhut/agent-tool-openproject-cli/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![Python](https://img.shields.io/pypi/pyversions/agent-tool-openproject-cli)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 ![Agent ready](https://img.shields.io/badge/agent-ready-8A2BE2)
 
-`openproject-cli` is a Python command-line interface for the
+**Install:** `pipx install agent-tool-openproject-cli` — then run `openproject guide`.
+
+[**agent-tool-openproject-cli**](https://pypi.org/project/agent-tool-openproject-cli/)
+(the installed command is `openproject`) is a Python command-line interface for the
 [OpenProject](https://www.openproject.org/) REST API v3. It covers the whole
 day-to-day workflow — **work packages** (create/update/delete/move), assignees,
 custom fields, projects, comments, **time entries**, a genuinely good
@@ -41,6 +45,22 @@ first-class JSON output so it slots straight into automation and AI agents.
 work package automation, time tracking CLI, project management CLI, AI agent tool,
 LLM tooling, Claude, DevOps automation, invoicing.
 
+## Compatibility
+
+- **OpenProject API:** the stable REST **API v3** (HAL+JSON).
+- **CI-verified against:** OpenProject **15.5.1** (Community) — the full integration
+  test suite runs against it on every push.
+- **Expected to work with:** any reasonably recent OpenProject — self-hosted
+  Community/Enterprise or the cloud edition — that serves API v3 (roughly **13+**).
+  API v3 is stable across releases; where behaviour genuinely differs between
+  versions (e.g. the time-entry work-package filter changed in a newer release),
+  the CLI detects and adapts automatically.
+- **Python:** 3.10+.
+
+Only 15.5.1 is exercised in CI; other versions rely on API-v3 stability. If you hit
+a version-specific quirk, `openproject raw <method> <path>` reaches any endpoint
+directly as an escape hatch.
+
 ---
 
 ## Quick start
@@ -49,16 +69,16 @@ LLM tooling, Claude, DevOps automation, invoicing.
 
 Pick whichever fits your target:
 
-**a) `pipx` (recommended — isolated, `openproject` on PATH, needs Python 3.10+)**
+**a) `pipx` (recommended — isolated, puts `openproject` on your PATH, needs Python 3.10+)**
 ```bash
-pipx install agent-tool-openproject-cli          # from PyPI (installs the `openproject` command)
-pipx install git+https://github.com/alexander-zierhut/agent-tool-openproject-cli.git  # or straight from git
+pipx install agent-tool-openproject-cli          # installs the `openproject` command
 ```
 
-**b) `pip` into a venv (for development)**
+**b) `pip`**
 ```bash
-python3 -m venv .venv && . .venv/bin/activate
-pip install -e .          # from this directory
+pip install agent-tool-openproject-cli           # from PyPI
+# or, for local development from a clone:
+python3 -m venv .venv && . .venv/bin/activate && pip install -e .
 ```
 
 **c) Single self-contained binary (no Python on the target)**
