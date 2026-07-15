@@ -1,7 +1,11 @@
 name: release
 
-# Build a self-contained `op` binary for each platform and attach it to the
-# GitHub Release when you push a version tag (e.g. `git tag v0.1.0 && git push --tags`).
+# Build a self-contained `openproject` binary for each platform plus the Python
+# wheel/sdist and attach them to the GitHub Release when you push a version tag
+# (e.g. `git tag v0.1.0 && git push --tags`).
+#
+# Each job uploads its own artifact to the release as soon as it finishes, so a
+# slow/queued runner (e.g. macOS-Intel) never blocks the other platforms.
 
 on:
   push:
@@ -12,14 +16,14 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  binary:
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             asset: openproject-linux-x86_64
-          - os: macos-latest      # Apple Silicon runners -> arm64
+          - os: macos-latest      # Apple Silicon -> arm64
             asset: openproject-macos-arm64
           - os: macos-13          # Intel
             asset: openproject-macos-x86_64
@@ -32,9 +36,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install project + PyInstaller
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e . pyinstaller
+        run: pip install -e '.[build]'
 
       - name: Build (Unix)
         if: runner.os != 'Windows'
@@ -61,12 +63,14 @@ jobs:
         shell: bash
         run: "dist/${{ matrix.asset }} --help >/dev/null && echo ok"
 
-      - uses: actions/upload-artifact@v4
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
         with:
-          name: ${{ matrix.asset }}
-          path: dist/${{ matrix.asset }}
+          files: dist/${{ matrix.asset }}
+          generate_release_notes: true
 
-  # Python wheel + sdist (for pip/pipx installs) attached to the release.
+  # Python wheel + sdist (for pip/pipx) — attaches independently.
   python-dist:
     runs-on: ubuntu-latest
     steps:
@@ -76,24 +80,13 @@ jobs:
           python-version: "3.12"
       - run: pip install build
       - run: python -m build
-      - uses: actions/upload-artifact@v4
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
         with:
-          name: python-dist
-          path: dist/*
-
-  release:
-    needs: [build, python-dist]
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with: { path: artifacts, merge-multiple: true }
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: artifacts/*
+          files: dist/*
           generate_release_notes: true
       # To also publish to PyPI, add a PYPI_API_TOKEN secret and uncomment:
       # - uses: pypa/gh-action-pypi-publish@release/v1
       #   with:
       #     password: ${{ secrets.PYPI_API_TOKEN }}
-      #     packages-dir: artifacts
