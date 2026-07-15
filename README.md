@@ -51,8 +51,8 @@ Pick whichever fits your target:
 
 **a) `pipx` (recommended — isolated, `openproject` on PATH, needs Python 3.10+)**
 ```bash
-pipx install openproject-cli          # once published to PyPI
-pipx install git+https://…/openproject-cli.git   # or straight from git
+pipx install agent-tool-openproject-cli          # from PyPI (installs the `openproject` command)
+pipx install git+https://github.com/alexander-zierhut/agent-tool-openproject-cli.git  # or straight from git
 ```
 
 **b) `pip` into a venv (for development)**

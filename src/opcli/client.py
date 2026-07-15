@@ -19,7 +19,7 @@ from typing import Any, Callable, Iterator
 
 import httpx
 
-from . import hal
+from . import __version__, hal
 from .errors import (
     ApiError,
     AuthError,
@@ -31,7 +31,7 @@ from .errors import (
 
 Json = dict[str, Any]
 
-USER_AGENT = "openproject-cli/0.1"
+USER_AGENT = f"agent-tool-openproject-cli/{__version__}"
 
 
 class Client:

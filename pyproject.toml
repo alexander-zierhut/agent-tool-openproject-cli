@@ -3,13 +3,26 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "openproject-cli"
-version = "0.2.0"
-description = "Agent-friendly command-line interface for OpenProject (work packages, projects, time, costs, search, and more)"
+name = "agent-tool-openproject-cli"
+version = "0.2.1"
+description = "Agent-ready command-line interface for OpenProject (work packages, projects, time, costs, search, and more). Installs the `openproject` command."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "Zierhut IT" }]
+authors = [{ name = "Zierhut IT" }, { name = "Alexander Zierhut" }]
+keywords = [
+    "openproject", "cli", "command-line", "openproject-api", "work-packages",
+    "time-tracking", "project-management", "ai-agent", "llm", "automation", "invoicing",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Bug Tracking",
+    "Topic :: Utilities",
+]
 dependencies = [
     "typer>=0.12",
     "httpx>=0.27",
@@ -26,6 +39,12 @@ test = [
 build = [
     "pyinstaller>=6",
 ]
+
+[project.urls]
+Homepage = "https://github.com/alexander-zierhut/agent-tool-openproject-cli"
+Repository = "https://github.com/alexander-zierhut/agent-tool-openproject-cli"
+Issues = "https://github.com/alexander-zierhut/agent-tool-openproject-cli/issues"
+Changelog = "https://github.com/alexander-zierhut/agent-tool-openproject-cli/releases"
 
 [project.scripts]
 # Only `openproject` — the short name `op` is intentionally NOT claimed to avoid
