@@ -1,0 +1,62 @@
+name: compat
+
+# Runs the full integration suite against multiple OpenProject versions, so we
+# know exactly which versions the CLI supports. It's slow (each job boots and
+# seeds a real OpenProject), so it runs on demand and weekly — not on every push.
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 4 * * 1" # Mondays 04:00 UTC
+
+jobs:
+  matrix:
+    name: OpenProject ${{ matrix.version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ["13", "14", "15", "16", "17"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      COMPOSE_FILE: docker-compose.versiontest.yml
+      OP_IMAGE: openproject/openproject:${{ matrix.version }}
+      OP_PORT: "8090"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e '.[test]'
+
+      - name: Start OpenProject ${{ matrix.version }}
+        run: docker compose up -d
+
+      - name: Wait for health
+        run: |
+          echo "waiting for OpenProject ${{ matrix.version }} to seed & become healthy…"
+          for i in $(seq 1 110); do
+            curl -sf http://localhost:8090/health_checks/default >/dev/null && { echo "healthy"; exit 0; }
+            sleep 10
+          done
+          echo "did not become healthy in time"; docker compose logs --tail=60 openproject; exit 1
+
+      - name: Mint tokens & seed
+        run: |
+          for i in $(seq 1 12); do
+            TOK=$(./scripts/get_admin_token.sh 2>/dev/null | grep '^APITOKEN=' | cut -d= -f2 || true)
+            [ -n "$TOK" ] && break; sleep 10
+          done
+          test -n "$TOK" || { echo "could not mint admin token"; exit 1; }
+          echo "OPCLI_TOKEN=$TOK" >> "$GITHUB_ENV"
+          ./scripts/seed_test_data.sh
+          JANE=$(./scripts/get_admin_token.sh jane.doe 2>/dev/null | grep '^APITOKEN=' | cut -d= -f2 || true)
+          [ -n "$JANE" ] && echo "OPCLI_SECOND_TOKEN=$JANE" >> "$GITHUB_ENV"
+          echo "OPCLI_BASE_URL=http://localhost:8090" >> "$GITHUB_ENV"
+
+      - name: Integration suite
+        run: python -m pytest -m integration -q
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --tail=100 openproject

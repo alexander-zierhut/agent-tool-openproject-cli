@@ -1,0 +1,38 @@
+# Parameterised OpenProject instance for testing the CLI against multiple
+# OpenProject versions. Driven by env vars OP_IMAGE and OP_PORT, and run under a
+# distinct `-p <project>` so several versions can run side by side.
+#
+#   COMPOSE_PROJECT_NAME=opv16 COMPOSE_FILE=docker-compose.versiontest.yml \
+#     OP_IMAGE=openproject/openproject:16 OP_PORT=8096 docker compose up -d
+#
+# (Also handy for a CI version matrix.)
+
+services:
+  openproject:
+    image: ${OP_IMAGE}
+    restart: unless-stopped
+    ports:
+      - "${OP_PORT}:80"
+    environment:
+      OPENPROJECT_SECRET_KEY_BASE: "versiontest-secret-not-for-production"
+      SECRET_KEY_BASE: "versiontest-secret-not-for-production-0123456789abcdef"
+      OPENPROJECT_HOST__NAME: "localhost:${OP_PORT}"
+      OPENPROJECT_HTTPS: "false"
+      OPENPROJECT_DEFAULT__LANGUAGE: "en"
+      OPENPROJECT_SEED__ADMIN__USER__PASSWORD: "AdminPassw0rd!"
+      OPENPROJECT_SEED__ADMIN__USER__PASSWORD__RESET: "false"
+      OPENPROJECT_SEED__ADMIN__USER__MAIL: "admin@example.net"
+      OPENPROJECT_APIV3__ENABLE__BASIC__AUTH: "true"
+    volumes:
+      - pgdata:/var/openproject/pgdata
+      - assets:/var/openproject/assets
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health_checks/default"]
+      interval: 15s
+      timeout: 10s
+      retries: 50
+      start_period: 300s
+
+volumes:
+  pgdata:
+  assets:

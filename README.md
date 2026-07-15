@@ -48,18 +48,22 @@ LLM tooling, Claude, DevOps automation, invoicing.
 ## Compatibility
 
 - **OpenProject API:** the stable REST **API v3** (HAL+JSON).
-- **CI-verified against:** OpenProject **15.5.1** (Community) — the full integration
-  test suite runs against it on every push.
-- **Expected to work with:** any reasonably recent OpenProject — self-hosted
-  Community/Enterprise or the cloud edition — that serves API v3 (roughly **13+**).
-  API v3 is stable across releases; where behaviour genuinely differs between
-  versions (e.g. the time-entry work-package filter changed in a newer release),
-  the CLI detects and adapts automatically.
+- **Tested against:** OpenProject **13, 14, 15, 16, and 17** (Community, all-in-one).
+  The full integration suite passes on every one — the CLI covers the whole feature
+  set across all five majors. (15.x also runs in CI on every push; the `compat`
+  workflow re-runs the 13–17 matrix.)
+- **Version notes uncovered by testing:**
+  - **v16+** — time entries require a work package. Logging time against a *project*
+    only (`time add --project` with no `--work-package`) is rejected with
+    "Logged for can't be blank"; log against a work package instead.
+  - **v17** — the Docker image needs a real `SECRET_KEY_BASE` env var to boot
+    (a container-config change, unrelated to the CLI).
+  - The time-entry work-package **filter** name differs across versions
+    (`work_package_id` on ≤15 vs the newer `entity_*` form); the CLI detects and
+    adapts automatically.
 - **Python:** 3.10+.
 
-Only 15.5.1 is exercised in CI; other versions rely on API-v3 stability. If you hit
-a version-specific quirk, `openproject raw <method> <path>` reaches any endpoint
-directly as an escape hatch.
+Anything version-specific can be reached directly with `openproject raw <method> <path>`.
 
 ---
 

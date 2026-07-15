@@ -107,6 +107,8 @@ TIME ENTRIES
   edit:    openproject time edit <id> --hours 3 --comment "..."
   delete:  openproject time delete <id> -y
   activities: openproject time activities --project P   (Development, Management, ...)
+  NOTE: OpenProject 16+ requires a work package for time entries — logging against a
+        project only (--project with no --work-package) is rejected there.
 """,
     "comments": """\
 COMMENTS (stored as work-package activities)

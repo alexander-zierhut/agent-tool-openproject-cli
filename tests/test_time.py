@@ -52,7 +52,12 @@ def test_single_sided_date_filters(op, wp):
 
 
 def test_log_on_project(op, project):
-    added = op(["time", "add", "1", "--project", project["identifier"], "--comment", "planning"]).ok().json
+    res = op(["time", "add", "1", "--project", project["identifier"], "--comment", "planning"])
+    if res.code != 0 and "logged for" in (res.stderr or "").lower():
+        # OpenProject 16+ requires a work package ("entity") for time entries;
+        # project-only logging is no longer accepted.
+        pytest.skip("this OpenProject version requires a work package for time entries")
+    added = res.ok().json
     assert added["hours"] == "PT1H"
     assert added["project"]["id"] == project["id"]
     op(["time", "delete", str(added["id"]), "-y"])
