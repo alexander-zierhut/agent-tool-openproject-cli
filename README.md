@@ -454,17 +454,41 @@ default to `json`. Precedence: `--format`/`-f` → `-o/--output` → `$OPCLI_FOR
 
 ---
 
-## Testing
+## Contributing / Development
 
-A full integration suite drives the real CLI against the live instance.
+**You do not need OpenProject, Docker, or a token to contribute.** Clone it and run:
+
+```bash
+pip install -e '.[test]'
+pytest                    # 144 passed, 103 skipped — ~2s, no server needed
+```
+
+That is the whole setup. The suite is green on a clean checkout: the tests that
+need a live instance detect there isn't one and skip with a message telling you
+what to set. `make test-unit` runs the same hermetic set explicitly.
+
+Please add a test with your change — `pytest -m "not integration"` is fast enough
+to run on every save.
+
+### The deeper tier (only if you're touching the client↔server seam)
+
+Boot a real OpenProject and the integration tests light up automatically:
+
+```bash
+make up        # docker compose up + wait for health (first boot seeds the DB, ~5 min)
+make env       # mint the admin token, seed test data, write .env
+make test      # the full suite against the live instance
+make down      # tear down
+```
+
+Or by hand:
 
 ```bash
 docker compose up -d
 eval "$(./scripts/get_admin_token.sh)"
 export OPCLI_BASE_URL=http://localhost:8090 OPCLI_TOKEN="$APITOKEN"
 ./scripts/seed_test_data.sh          # modules + custom fields + a 2nd user
-pip install -e '.[test]'
-pytest                               # 56 tests
+pytest
 ```
 
 A few tests need a second, non-admin actor (to generate a notification). Set
@@ -474,18 +498,8 @@ A few tests need a second, non-admin actor (to generate a notification). Set
 export OPCLI_SECOND_TOKEN=$(./scripts/get_admin_token.sh jane.doe | grep APITOKEN | cut -d= -f2)
 ```
 
-Without `OPCLI_BASE_URL`/`OPCLI_TOKEN` the integration tests skip and only the
-pure-unit tests run — handy for CI. See `docs/API_NOTES.md` for the researched
-API details behind the implementation.
-
-Or just use the Makefile:
-
-```bash
-make up        # docker compose up + wait for health
-make seed      # mint token, seed test data, write .env
-make test      # run the suite
-make down      # tear down
-```
+CI runs all of this on every push, so you don't have to. See `docs/API_NOTES.md`
+for the researched API details behind the implementation.
 
 ---
 

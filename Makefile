@@ -37,8 +37,10 @@ test: ## Run the full suite (needs .env / OPCLI_* set)
 	. .venv/bin/activate && [ -f $(ENV_FILE) ] && . $(ENV_FILE); \
 	  OPCLI_BASE_URL=$${OPCLI_BASE_URL:-$(BASE_URL)} python -m pytest
 
-test-unit: ## Run only the pure-unit tests (no live instance)
-	. .venv/bin/activate && python -m pytest tests/test_unit.py
+test-unit: ## Run the hermetic tests (no live instance, no Docker, ~2s)
+	# The MARKER is the source of truth, never a file list: `tests/test_unit.py`
+	# ran 30 of the 140 hermetic tests and silently missed every file added since.
+	. .venv/bin/activate && python -m pytest -m "not integration"
 
 down: ## Stop the local OpenProject (keep volumes)
 	docker compose down

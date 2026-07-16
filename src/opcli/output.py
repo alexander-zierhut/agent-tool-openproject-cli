@@ -120,8 +120,13 @@ class Emitter:
         return n
 
     def message(self, text: str) -> None:
-        """A human status line (table mode only; suppressed in json mode)."""
-        if self.fmt != OutputFormat.json:
+        """A human status line (table mode only; suppressed in every machine format).
+
+        Allowlist, not denylist: `!= json` would also let this print into csv and
+        markdown, corrupting both. stdout is a machine channel (see AGENTS.md) —
+        only the one human-facing format may carry prose.
+        """
+        if self.fmt == OutputFormat.table:
             self.console.print(text)
 
     # ---- json --------------------------------------------------------

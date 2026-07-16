@@ -23,7 +23,10 @@ def test_upload_list_download_delete(op, wp, tmp_path):
     assert any(a["id"] == att_id for a in listed)
 
     dest = tmp_path / "downloaded.txt"
-    op(["attach", "download", str(att_id), "-O", str(dest)]).ok()
+    # Use the LONG form deliberately: `--output` used to be swallowed by
+    # _pop_globals as a format and this test's `-O` alias is exactly why CI never
+    # noticed. See tests/test_globals_unit.py.
+    op(["attach", "download", str(att_id), "--out", str(dest)]).ok()
     assert dest.read_text() == content
 
     op(["attach", "delete", str(att_id), "-y"]).ok()

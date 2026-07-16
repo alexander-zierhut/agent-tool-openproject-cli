@@ -44,7 +44,7 @@ Download an attachment's content.
 
 | Option | Description |
 | --- | --- |
-| `--output`, `-O` | Output path (default: original file name). |
+| `--out`, `-O` | Output path (default: original file name). |
 
 ### `openproject attach get`
 

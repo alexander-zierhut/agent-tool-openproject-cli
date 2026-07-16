@@ -77,7 +77,11 @@ def get(ctx: typer.Context, attachment_id: int = typer.Argument(..., help="Attac
 def download(
     ctx: typer.Context,
     attachment_id: int = typer.Argument(..., help="Attachment id."),
-    output: Path = typer.Option(None, "--output", "-O", help="Output path (default: original file name)."),
+    # NOTE: this is `--out`, not `--output`. `--output`/`-o` is a RESERVED global
+    # (output format) that cli.py::_pop_globals strips from anywhere on the line —
+    # so a local `--output f.pdf` would be swallowed as a format and never reach
+    # this command. tests/test_globals_unit.py enforces the reservation.
+    output: Path = typer.Option(None, "--out", "-O", help="Output path (default: original file name)."),
 ) -> None:
     """Download an attachment's content."""
     obj = ctx_obj(ctx)
