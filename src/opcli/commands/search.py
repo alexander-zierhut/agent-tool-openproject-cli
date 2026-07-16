@@ -251,7 +251,7 @@ def values(
         allowed = (spec.get("_links") or {}).get("allowedValues") or []
         rows = [{"name": a.get("title"), "href": a.get("href")} for a in allowed]
     else:
-        from ..errors import OpError
+        from agentcli.errors import OpError
 
         raise OpError(
             f"no value list for '{field}'. Try status, type, priority, project, version, assignee, or a customFieldN. "

@@ -24,8 +24,15 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
+    # The shared chassis: the exit-code contract, the Emitter (json/table/
+    # markdown/csv + --fields + NDJSON) and keyring-backed credentials. Pinned
+    # to a major: the exit codes and output shapes it defines are published API,
+    # so a major bump there is a breaking change for every agent driving this CLI.
+    "agent-tool-shared-cli>=0.1,<0.2",
     "typer>=0.12",
     "httpx>=0.27",
+    # keyring/rich come via agent-tool-shared-cli, but are declared here too:
+    # this CLI imports them directly, and a package must depend on what it imports.
     "keyring>=25",
     "rich>=13",
     "python-dateutil>=2.9",

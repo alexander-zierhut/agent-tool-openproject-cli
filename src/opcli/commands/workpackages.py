@@ -8,7 +8,7 @@ import typer
 
 from .. import hal, resolve, serialize, wpfilters
 from ..duration import parse_hours_input
-from ..errors import OpError
+from agentcli.errors import OpError
 from ._shared import apply_custom_fields, ctx_obj, parse_json_option, set_link
 
 app = typer.Typer(no_args_is_help=True)

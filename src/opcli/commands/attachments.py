@@ -15,7 +15,7 @@ from pathlib import Path
 import typer
 
 from .. import hal, serialize
-from ..errors import OpError
+from agentcli.errors import OpError
 from ._shared import ctx_obj
 
 app = typer.Typer(no_args_is_help=True)

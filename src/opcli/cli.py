@@ -9,8 +9,8 @@ import typer
 
 from . import __version__
 from .context import AppContext
-from .errors import DryRun, OpError
-from .output import OutputFormat, print_error
+from agentcli.errors import DryRun, OpError
+from agentcli.output import OutputFormat, print_error
 
 
 def _version_callback(value: bool) -> None:

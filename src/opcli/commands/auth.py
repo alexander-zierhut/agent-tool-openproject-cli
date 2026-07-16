@@ -6,10 +6,11 @@ import os
 
 import typer
 
-from .. import credentials, serialize
+from .. import serialize
+from ..spec import credentials
 from ..client import Client
 from ..config import Profile
-from ..errors import AuthError, OpError
+from agentcli.errors import AuthError, OpError
 from ._shared import ctx_obj
 
 app = typer.Typer(no_args_is_help=True)

@@ -12,7 +12,7 @@ from __future__ import annotations
 import typer
 
 from ..config import Config, config_path
-from ..errors import OpError
+from agentcli.errors import OpError
 from ._shared import ctx_obj
 
 app = typer.Typer(no_args_is_help=True)

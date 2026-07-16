@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from opcli.config import Config, Profile, config_path
-from opcli.errors import ConfigError
+from agentcli.errors import ConfigError
 
 
 @pytest.fixture(autouse=True)

@@ -8,7 +8,7 @@ from typing import Any
 import typer
 
 from ..context import AppContext
-from ..errors import OpError
+from agentcli.errors import OpError
 
 
 def ctx_obj(ctx: typer.Context) -> AppContext:

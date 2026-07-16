@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from .client import Client
-from .errors import NotFoundError, OpError
+from agentcli.errors import NotFoundError, OpError
 from . import hal
 
 Json = dict[str, Any]

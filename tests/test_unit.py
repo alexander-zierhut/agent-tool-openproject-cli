@@ -8,8 +8,8 @@ import datetime as dt
 
 from opcli import hal, searchspec
 from opcli.duration import hours_to_iso, iso_to_hours, parse_hours_input
-from opcli.errors import OpError
-from opcli.output import OutputFormat
+from agentcli.errors import OpError
+from agentcli.output import OutputFormat
 
 
 @pytest.mark.parametrize(

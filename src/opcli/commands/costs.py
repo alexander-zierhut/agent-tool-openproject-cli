@@ -28,7 +28,7 @@ import typer
 
 from .. import hal, serialize
 from ..duration import iso_to_hours
-from ..errors import OpError
+from agentcli.errors import OpError
 from ._shared import ctx_obj
 from .time_entries import query_time_entries
 

@@ -2,15 +2,18 @@
 
 Config lives in a plain JSON file (``~/.config/op-cli/config.json`` by
 default). It never contains the API token — that is kept in the OS keyring by
-:mod:`opcli.credentials`. Multiple named *profiles* let one operator point the
-CLI at several OpenProject instances (e.g. ``prod`` and ``staging``).
+``agentcli.Credentials`` (see :mod:`opcli.spec`). Multiple named *profiles* let
+one operator point the CLI at several OpenProject instances (e.g. ``prod`` and
+``staging``).
 
 Environment overrides (useful for CI and the test-suite):
 
 * ``OPCLI_BASE_URL`` — overrides the active profile's base URL.
 * ``OPCLI_PROFILE``  — selects the active profile.
-* ``OPCLI_TOKEN``    — supplies the token directly (see :mod:`credentials`).
+* ``OPCLI_TOKEN``    — supplies the token directly.
 * ``OPCLI_CONFIG_DIR`` / ``XDG_CONFIG_HOME`` — relocate the config directory.
+
+All of those names, and the directory itself, come from :data:`opcli.spec.SPEC`.
 """
 
 from __future__ import annotations
@@ -21,22 +24,23 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .errors import ConfigError
+from agentcli.errors import ConfigError
+
+from .spec import SPEC
 
 DEFAULT_PROFILE = "default"
 
 
+# Thin wrappers over the single source of truth in SPEC. Before the extraction
+# this logic existed TWICE — here and in credentials.py — with nothing forcing
+# the two copies to agree, so relocating the config dir could put the token and
+# the profile in different directories.
 def config_dir() -> Path:
-    base = os.environ.get("OPCLI_CONFIG_DIR")
-    if base:
-        return Path(base)
-    xdg = os.environ.get("XDG_CONFIG_HOME")
-    root = Path(xdg) if xdg else Path.home() / ".config"
-    return root / "op-cli"
+    return SPEC.config_dir()
 
 
 def config_path() -> Path:
-    return config_dir() / "config.json"
+    return SPEC.config_file()
 
 
 @dataclass
@@ -111,7 +115,7 @@ class Config:
 
     # ---- resolution --------------------------------------------------
     def active_profile_name(self) -> str:
-        return os.environ.get("OPCLI_PROFILE") or self.current_profile
+        return SPEC.getenv("PROFILE") or self.current_profile
 
     def resolve(self) -> Profile:
         """Return the effective profile, applying env overrides.
@@ -121,7 +125,7 @@ class Config:
         to run the CLI headless.
         """
         name = self.active_profile_name()
-        env_url = os.environ.get("OPCLI_BASE_URL")
+        env_url = SPEC.getenv("BASE_URL")
 
         prof = self.profiles.get(name)
         if prof is None:

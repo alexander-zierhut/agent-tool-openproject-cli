@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from opcli.client import Client
-from opcli.errors import ApiError, DryRun, NotFoundError
+from agentcli.errors import ApiError, DryRun, NotFoundError
 
 
 def _client(handler, **kw):

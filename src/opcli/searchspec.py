@@ -20,7 +20,7 @@ from typing import Any
 
 from . import hal, resolve
 from .client import Client
-from .errors import OpError
+from agentcli.errors import OpError
 
 
 @dataclass

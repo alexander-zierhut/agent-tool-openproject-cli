@@ -6,7 +6,7 @@ Responsibilities:
 * Normalising paths so callers may pass ``"work_packages"``,
   ``"/api/v3/work_packages/1"`` or a full URL interchangeably (following the
   ``href`` values the API returns "just works").
-* Turning HAL error bodies into typed :class:`opcli.errors.OpError` subclasses.
+* Turning HAL error bodies into typed :class:`agentcli.errors.OpError` subclasses.
 * Auto-pagination of collection endpoints.
 * Optimistic-locking updates (fetch ``lockVersion`` → PATCH → retry on 409).
 * JSON *and* multipart requests (the latter for attachment uploads).
@@ -22,7 +22,7 @@ from typing import Any, Callable, Iterator
 import httpx
 
 from . import __version__, hal
-from .errors import (
+from agentcli.errors import (
     ApiError,
     AuthError,
     ConflictError,

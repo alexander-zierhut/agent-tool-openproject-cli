@@ -7,7 +7,7 @@ import datetime as dt
 import pytest
 
 from opcli import searchspec
-from opcli.errors import OpError
+from agentcli.errors import OpError
 from support import FakeClient
 
 STATUSES = [{"id": 7, "name": "In progress"}, {"id": 12, "name": "Closed"}]

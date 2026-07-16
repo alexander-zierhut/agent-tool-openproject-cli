@@ -7,7 +7,7 @@ import json
 import typer
 
 from .. import hal, resolve, serialize
-from ..errors import OpError
+from agentcli.errors import OpError
 from ._shared import apply_custom_fields, ctx_obj, set_link
 
 app = typer.Typer(no_args_is_help=True)

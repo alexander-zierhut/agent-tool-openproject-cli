@@ -10,11 +10,11 @@ import os
 import sys
 from typing import Optional
 
-from . import credentials
+from .spec import credentials
 from .client import Client
 from .config import Config, Profile
-from .errors import AuthError
-from .output import Emitter, OutputFormat
+from agentcli.errors import AuthError
+from agentcli.output import Emitter, OutputFormat
 
 
 class AppContext:
