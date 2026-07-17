@@ -110,5 +110,27 @@ jobs:
           python-version: "3.12"
       - run: pip install build
       - run: python -m build
+
+      # The guard the 0.5.0 release needed and did not have. When pyproject
+      # carried a STATIC version, a bump to __init__.py alone produced a wheel
+      # still stamped with the old version; PyPI rejected it as "File already
+      # exists" AFTER the tag was cut and the GitHub release published. Reading
+      # the version off the built wheel and comparing it to the tag turns that
+      # into a fast, obvious failure before upload. (pyproject is now dynamic, so
+      # the mismatch cannot recur — but the guard is cheap and catches the next
+      # surprise too.)
+      - name: Tag must match the built version
+        run: |
+          WHL=$(ls dist/*.whl)
+          BUILT=$(basename "$WHL" | cut -d- -f2)
+          TAG="${GITHUB_REF_NAME#v}"
+          echo "built=$BUILT tag=$TAG  ($(basename "$WHL"))"
+          [ "$BUILT" = "$TAG" ] || { echo "::error::tag v$TAG != built version $BUILT"; exit 1; }
+
       - name: Publish
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # A re-run to fix a failed per-platform binary must not die on "File
+          # already exists" for a version that published fine. A forgotten bump is
+          # still caught by the guard above.
+          skip-existing: true
