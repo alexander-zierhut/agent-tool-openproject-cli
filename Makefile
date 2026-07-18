@@ -1,4 +1,4 @@
-.PHONY: help install up wait token seed env test test-unit down clean
+.PHONY: help install up wait token seed env test test-unit lint docs down clean
 
 BASE_URL ?= http://localhost:8090
 ENV_FILE ?= .env
@@ -47,3 +47,10 @@ down: ## Stop the local OpenProject (keep volumes)
 
 clean: ## Stop and delete volumes (full reset)
 	docker compose down -v
+
+lint: ## Lint with ruff (not a declared dep: pip install ruff, or use uvx/pipx)
+	@command -v ruff >/dev/null 2>&1 || { echo "ruff not found. pip install ruff"; exit 1; }
+	ruff check src tests scripts
+
+docs: ## Regenerate docs/COMMANDS.md from the live command tree
+	. .venv/bin/activate && python scripts/gen_docs.py

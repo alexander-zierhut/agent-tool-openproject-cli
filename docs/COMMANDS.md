@@ -1,6 +1,8 @@
 # Command reference
 
-_Auto-generated from the CLI (`python scripts/gen_docs.py`). Every command also accepts the global `--output/-o` (json\|table\|markdown), `--format/-f`, `--fields`, `--profile/-p` and `--no-color` options, usable anywhere on the line._
+_Auto-generated from the CLI (`python scripts/gen_docs.py`)._
+
+_Every command also accepts `--output/-o` (json\|table\|markdown\|csv), `--format/-f`, `--fields`/`--columns`, `--dry-run`, `--stream` and `--no-context`. Those are **stripped from argv before parsing**, so they work anywhere on the line — before or after the subcommand. `--profile/-p` and `--no-color` are ordinary root options and must therefore come **before** the subcommand (`openproject -p prod wp ls`, not `openproject wp ls -p prod`)._
 
 ## Groups
 

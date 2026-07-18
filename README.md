@@ -50,6 +50,52 @@ first-class JSON output so it slots straight into automation and AI agents.
 work package automation, time tracking CLI, project management CLI, AI agent tool,
 LLM tooling, Claude, DevOps automation, invoicing.
 
+## The command surface
+
+Everything is discoverable from the binary — `openproject --help`, then
+`openproject guide` for the playbook and `openproject <group> --help` for any
+group. The top level:
+
+```text
+ Usage: openproject [OPTIONS] COMMAND [ARGS]...
+
+ Agent-friendly CLI for OpenProject (work packages, projects, time, search,
+ invoicing).
+
+ Output is JSON on stdout by default (errors are JSON on stderr with a non-zero
+ exit code); add `-o table` or `-o markdown`, or trim with `--fields id,subject`.
+ Pass names not ids (`--assignee jane.doe`, `--status "In progress"`, `me`).
+
+ New here / no context? Run `openproject guide` for the full playbook, or
+ `openproject search fields` to discover what you can filter on.
+
+╭─ Commands ───────────────────────────────────────────────────────────────────────╮
+│ guide     Built-in operating guide — how to use this CLI without external docs.  │
+│ auth      Log in, log out, inspect credentials.                                  │
+│ project   Create, list, archive projects.                                        │
+│ wp        Work packages: CRUD, move, assign, watch.                              │
+│ search    Powerful work-package (and global) search.                             │
+│ comment   Add, edit, list work-package comments.                                 │
+│ time      Log, edit, list time entries + reports.                                │
+│ user      Users, groups, memberships, assignable people.                         │
+│ member    Project memberships & roles.                                           │
+│ cf        Inspect custom fields / resource schemas.                              │
+│ notify    In-app notifications.                                                  │
+│ wiki      Wiki pages (read + write where supported).                             │
+│ attach    Attachments / file uploads on work packages.                           │
+│ filelink  Nextcloud/file-storage links on work packages.                         │
+│ cost      Time & cost reporting per person/project (invoicing).                  │
+│ raw       Escape hatch: call any API endpoint directly.                          │
+│ settings  View & change CLI settings (default output format).                    │
+│ context   Sticky session defaults (project/user/filters) reused across commands. │
+│ install   Integrate with other tools (e.g. `install claude`).                    │
+╰──────────────────────────────────────────────────────────────────────────────────╯
+```
+
+Global options — `-o/--output json|table|markdown|csv`, `--fields`, `--dry-run`,
+`--stream`, `--no-context` — are stripped from argv before parsing, so they work
+anywhere on the line. Full reference: [docs/COMMANDS.md](docs/COMMANDS.md).
+
 ## Compatibility
 
 - **OpenProject API:** the stable REST **API v3** (HAL+JSON).
@@ -519,3 +565,25 @@ for the researched API details behind the implementation.
   client-side rate table for invoicing.
 - **Custom fields** can't be created via the API (admin UI / Rails only); the
   CLI discovers and sets them.
+
+## Part of the family
+
+Built on **[agent-tool-shared-cli](https://github.com/alexander-zierhut/agent-tool-shared-cli)** —
+the chassis every tool in this family shares: JSON on stdout, JSON errors on
+stderr, a stable cross-tool exit-code contract, `--dry-run`, four output formats,
+and a built-in `guide` so an agent can learn each tool from the tool itself.
+
+| Tool | Install | For |
+| --- | --- | --- |
+| [**drone-cli**](https://github.com/alexander-zierhut/agent-tool-drone-cli) | `pipx install agent-tool-drone-cli` | Drone CI — builds, failing-step logs, promotions |
+| [**grafana-cli**](https://github.com/alexander-zierhut/agent-tool-grafana-cli) | `pipx install agent-tool-grafana-cli` | Grafana — log discovery, health scan, alert routing |
+| [**openproject**](https://github.com/alexander-zierhut/agent-tool-openproject-cli) | `pipx install agent-tool-openproject-cli` | OpenProject — work packages, time, invoicing |
+| [**lexware-office**](https://github.com/alexander-zierhut/agent-tool-lexware-office-cli) | `pipx install agent-tool-lexware-office-cli` | Lexware Office — invoices, contacts, AR-aging |
+
+They compose over the shared contract:
+`openproject time report --month 2026-07 && lexware-office invoice create ...`
+turns tracked hours into an invoice.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
