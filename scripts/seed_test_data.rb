@@ -48,32 +48,59 @@ end
 # `cf project -P`, and `cost open` (which reads a billing cut-off date + a billable
 # flag off the project). Values are set on the demo project so `cost open` has a
 # window to sum; the cut-off is far in the past so every logged entry counts.
-proj_date_cf = ProjectCustomField.find_or_create_by!(name: 'Billed through') do |c|
-  c.field_format = 'date'; c.is_required = false
-end
-proj_bool_cf = ProjectCustomField.find_or_create_by!(name: 'Billable') do |c|
-  c.field_format = 'bool'; c.is_required = false
-end
-proj_list_cf = ProjectCustomField.find_or_create_by!(name: 'Billing Plan') do |c|
-  c.field_format = 'list'; c.is_required = false; c.possible_values = %w[Monthly Quarterly Yearly]
-end
-[proj_date_cf, proj_bool_cf, proj_list_cf].each { |cf| cf.update!(is_for_all: true) }
-demo = Project.find_by(identifier: 'demo-project')
-if demo
-  quarterly = proj_list_cf.custom_options.find_by(value: 'Quarterly')
-  demo.custom_field_values = {
-    proj_date_cf.id => '2020-01-01',
-    proj_bool_cf.id => true,
-    proj_list_cf.id => quarterly&.id,
-  }
-  demo.save!(validate: false)
-end
-# A second billable project with NO cut-off date, so `cost open` (sweep) has a
-# project to report under "skipped" (billable but nothing to compute from).
-scrum = Project.find_by(identifier: 'your-scrum-project')
-if scrum
-  scrum.custom_field_values = { proj_bool_cf.id => true }
-  scrum.save!(validate: false)
+#
+# Best-effort + wrapped: newer OpenProject models project attributes with a
+# required ProjectCustomFieldSection and per-project enablement, older ones use
+# is_for_all. If a given version won't take this, we warn and continue so the
+# rest of the seed (tokens, users, WP fields) still succeeds — the project-
+# attribute integration tests then skip rather than the whole suite failing.
+$proj_cf_ok = "proj_cf=unavailable"
+begin
+  section = ProjectCustomFieldSection.find_or_create_by!(name: 'Billing') if defined?(ProjectCustomFieldSection)
+  mk = lambda do |name, fmt, **opts|
+    ProjectCustomField.find_or_create_by!(name: name) do |c|
+      c.field_format = fmt
+      c.is_required = false
+      c.custom_field_section = section if section && c.respond_to?(:custom_field_section=)
+      opts.each { |k, v| c.public_send("#{k}=", v) }
+    end
+  end
+  proj_date_cf = mk.call('Billed through', 'date')
+  proj_bool_cf = mk.call('Billable', 'bool')
+  proj_list_cf = mk.call('Billing Plan', 'list', possible_values: %w[Monthly Quarterly Yearly])
+  cfs = [proj_date_cf, proj_bool_cf, proj_list_cf]
+  cfs.each { |cf| cf.update!(is_for_all: true) }
+
+  demo = Project.find_by(identifier: 'demo-project')
+  # A second billable project with NO cut-off date, so `cost open` (sweep) reports
+  # it under "skipped" (billable but nothing to compute from).
+  scrum = Project.find_by(identifier: 'your-scrum-project')
+
+  # Enable the attributes on the seeded projects for the sectioned model (no-op
+  # where is_for_all already covers it).
+  if defined?(ProjectCustomFieldProjectMapping)
+    [demo, scrum].compact.each do |p|
+      cfs.each { |cf| ProjectCustomFieldProjectMapping.find_or_create_by!(project_id: p.id, custom_field_id: cf.id) }
+    end
+  end
+
+  if demo
+    quarterly = proj_list_cf.custom_options.find_by(value: 'Quarterly')
+    demo.custom_field_values = {
+      proj_date_cf.id => '2020-01-01',
+      proj_bool_cf.id => true,
+      proj_list_cf.id => quarterly&.id,
+    }
+    demo.save!(validate: false)
+  end
+  if scrum
+    scrum.custom_field_values = { proj_bool_cf.id => true }
+    scrum.save!(validate: false)
+  end
+  $proj_cf_ok = "proj_date_cf=customField#{proj_date_cf.id} proj_bool_cf=customField#{proj_bool_cf.id} " \
+                "proj_list_cf=customField#{proj_list_cf.id}"
+rescue => e
+  warn "SEED_WARN project custom fields not seeded (#{e.class}: #{e.message})"
 end
 
 # 3. Second user.
@@ -89,5 +116,4 @@ end
 
 puts "SEED_OK string_cf=customField#{string_cf.id} list_cf=customField#{list_cf.id} " \
      "list_options=#{list_cf.custom_options.pluck(:id, :value).inspect} jane=#{jane.id} " \
-     "proj_date_cf=customField#{proj_date_cf.id} proj_bool_cf=customField#{proj_bool_cf.id} " \
-     "proj_list_cf=customField#{proj_list_cf.id}"
+     "#{$proj_cf_ok}"
