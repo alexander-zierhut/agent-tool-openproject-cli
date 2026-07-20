@@ -61,6 +61,9 @@ def test_time_entry_serializer():
     t = serialize.time_entry(SAMPLE_TIME_ENTRY)
     assert t["id"] == 88
     assert t["hours"] == "PT2H30M"
+    assert t["hoursDecimal"] == 2.5
+    assert serialize.time_entry({"hours": "P1D"})["hoursDecimal"] == 24.0  # 24h/day (calendar)
+    assert serialize.time_entry({})["hoursDecimal"] is None
     assert t["activity"] == "Development"
     assert t["workPackage"]["id"] == 42
     assert t["project"]["id"] == 1

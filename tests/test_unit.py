@@ -33,7 +33,12 @@ def test_hours_to_iso(hours, iso):
         ("PT2H30M", 2.5),
         ("PT8H", 8.0),
         ("PT15M", 0.25),
+        # Calendar convention: OpenProject's serializer treats a day as 24h and a
+        # week as 7 days. Verified live: PT40H round-trips to "P1DT16H" (day=24h),
+        # P1W to "P7D" (168h). A P1D entry is 24 real hours, not an 8h working day.
+        ("P1D", 24.0),
         ("P1DT2H", 26.0),
+        ("P1W", 168.0),
         ("PT0S", 0.0),
     ],
 )

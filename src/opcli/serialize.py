@@ -12,6 +12,7 @@ import re
 from typing import Any
 
 from . import hal
+from .duration import iso_to_hours
 
 Json = dict[str, Any]
 
@@ -78,7 +79,25 @@ def work_package(doc: Json, *, include_description: bool = True) -> Json:
     return out
 
 
-def project(doc: Json) -> Json:
+def _project_attributes(cf: Json, schema: Json) -> list[Json]:
+    """Join resolved custom-field values (`cf`) to their human name and type from
+    the project form `schema` (``customFieldNN`` -> ``{name, type}``). Includes
+    every schema-defined project attribute (value ``None`` when unset) plus any
+    value-bearing field not in the schema, ordered by field number."""
+    keys = [k for k in schema if _CF_RE.match(k)]
+    for k in cf:
+        if k not in keys:
+            keys.append(k)
+    rows = [
+        {"key": k, "name": (schema.get(k) or {}).get("name") or k,
+         "type": (schema.get(k) or {}).get("type"), "value": cf.get(k)}
+        for k in keys
+    ]
+    rows.sort(key=lambda a: int(a["key"][11:]) if a["key"][11:].isdigit() else 1_000_000)
+    return rows
+
+
+def project(doc: Json, schema: Json | None = None) -> Json:
     out: Json = {
         "id": doc.get("id"),
         "name": doc.get("name"),
@@ -94,6 +113,10 @@ def project(doc: Json) -> Json:
     cf = custom_fields(doc)
     if cf:
         out["customFields"] = cf
+    # With a form schema, surface every project attribute with its value resolved
+    # to a human name/type — the join callers otherwise do by hand (issue #4).
+    if schema is not None:
+        out["attributes"] = _project_attributes(cf, schema)
     return out
 
 
@@ -137,9 +160,13 @@ def comment(doc: Json) -> Json:
 
 
 def time_entry(doc: Json) -> Json:
+    # Resolve the ISO8601 duration to decimal hours (working-day model: P1D=8h)
+    # so callers never have to parse it — and `--fields hoursDecimal` can sum.
+    _hd = iso_to_hours(doc.get("hours"))
     return {
         "id": doc.get("id"),
         "hours": doc.get("hours"),
+        "hoursDecimal": None if _hd is None else round(_hd, 4),
         "spentOn": doc.get("spentOn"),
         "comment": _formattable(doc.get("comment")),
         "user": _link_ref(doc, "user"),
@@ -154,9 +181,17 @@ def time_entry(doc: Json) -> Json:
 
 def membership(doc: Json) -> Json:
     roles = [n.get("title") for n in hal.iter_link_list(doc, "roles")]
+    principal = _link_ref(doc, "principal")
+    if principal is not None:
+        # `login` is not in the memberships payload; memberships.py fills it via a
+        # batched principals lookup. Reserve the slot so shape is stable either way.
+        principal.setdefault("login", None)
     return {
         "id": doc.get("id"),
-        "principal": _link_ref(doc, "principal"),
+        # Top-level name = principal title, so `--fields name` (a top-level lookup)
+        # resolves to a human name instead of null (issue #6).
+        "name": hal.link_title(doc, "principal"),
+        "principal": principal,
         "project": _link_ref(doc, "project"),
         "roles": roles,
         "createdAt": doc.get("createdAt"),

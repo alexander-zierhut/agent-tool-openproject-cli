@@ -109,10 +109,16 @@ Print the authenticated user (GET /users/me).
 
 ### `openproject cf project`
 
-List custom fields (project attributes) available on projects.
+List custom fields (project attributes).
+
+Without ``-P``: every project attribute defined in the instance (the global
+form). With ``-P <project>``: only the attributes active on that project. To
+see a project's attribute *values* (not just the definitions), use
+``project get <project> --attributes``.
 
 | Option | Description |
 | --- | --- |
+| `--project`, `-P` | Scope to one project's active attributes (default: every project attribute defined in the instance). |
 | `--all` | Include built-in fields, not just custom. |
 
 ### `openproject cf time`
@@ -223,6 +229,27 @@ Load a saved context as the active one.
 **Arguments:** `name` (required)
 
 ## `cost`
+
+### `openproject cost open`
+
+Unbilled hours since the last billing date — the join the API won't do.
+
+Reads a project's "billed through" date attribute, sums the time booked from
+the day AFTER it up to --to (today by default), and reports open hours per
+user (and amounts if --rates is given). Without -P it sweeps every project
+whose billable-flag attribute is true, so one call answers "where is anything
+outstanding?". Which attributes hold the cut-off date and the billable flag is
+instance-specific: set them once with `settings set-cutoff-field` /
+`settings set-billable-field`, or pass --cutoff-field / --billable-field.
+
+| Option | Description |
+| --- | --- |
+| `--project`, `-P` | One project (id/identifier). Omit to sweep every billable project. |
+| `--rates` | JSON rate table for billable amounts (same format as `cost report`). |
+| `--cutoff-field` | Project date attribute holding the last-billed date (overrides `settings set-cutoff-field`). |
+| `--billable-field` | Project bool attribute flagging billable projects (used without -P; overrides `settings set-billable-field`). |
+| `--to` | End date YYYY-MM-DD (default: today). |
+| `--by-activity`, `--no-by-activity` | Break each person down by activity. |
 
 ### `openproject cost report`
 
@@ -438,11 +465,17 @@ Permanently delete a project (asynchronous on the server).
 
 Show a single project.
 
+With ``--attributes`` the project's custom fields are joined to their human
+names and types (and CustomOption values resolved to titles), so you don't
+have to read the definitions with ``cf project`` and map ``customFieldNN`` by
+hand. ``--raw`` wins over ``--attributes`` (returns the untouched HAL doc).
+
 **Arguments:** `project` (required)
 
 | Option | Description |
 | --- | --- |
 | `--raw`, `-r` | Return the full HAL document. |
+| `--attributes`, `-a` | Resolve project custom fields to their human names, types and values. |
 
 ### `openproject project list`
 
@@ -665,6 +698,18 @@ Print the effective default format.
 
 Print the config file path.
 
+### `openproject settings set-billable-field`
+
+Set the project attribute `cost open` (without -P) uses to find billable projects.
+
+**Arguments:** `name` (required)
+
+### `openproject settings set-cutoff-field`
+
+Set the project attribute `cost open` reads as the billing cut-off date.
+
+**Arguments:** `name` (required)
+
 ### `openproject settings set-format`
 
 Set the default output format used when no --format/-o is given.
@@ -736,7 +781,12 @@ Show a single time entry.
 
 ### `openproject time list`
 
-List time entries with filters (per person / project / work package).
+List time entries, or aggregate them.
+
+Plain: one row per entry. ``--sum``: a single ``{totalHours, entries}``.
+``--group-by user|activity|workPackage``: per-group subtotals; add ``--sum``
+to also get the grand total in a wrapper. Aggregation scans all matches,
+ignoring ``--limit``.
 
 | Option | Description |
 | --- | --- |
@@ -746,7 +796,9 @@ List time entries with filters (per person / project / work package).
 | `--from` | Start date (YYYY-MM-DD). |
 | `--to` | End date (YYYY-MM-DD). |
 | `--month` | Convenience month filter YYYY-MM. |
-| `--limit`, `-n` | Maximum rows (0 = all). |
+| `--limit`, `-n` | Maximum rows (0 = all). Ignored with --sum/--group-by (they scan all matches). |
+| `--sum` | Return the total decimal hours (and entry count) instead of the entry list. |
+| `--group-by` | Aggregate hours by user, activity, or workPackage (combine with --sum for a grand total). |
 
 ## `user`
 

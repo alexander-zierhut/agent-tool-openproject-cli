@@ -25,6 +25,8 @@ def show(ctx: typer.Context) -> None:
             "activeProfile": cfg.active_profile_name(),
             "profiles": sorted(cfg.profiles.keys()),
             "credentialBackend": credentials.backend_name(),
+            "costCutoffField": cfg.cost_cutoff_field or "(not set)",
+            "costBillableField": cfg.cost_billable_field or "(not set)",
         }
     )
 
@@ -51,6 +53,32 @@ def get_format(ctx: typer.Context) -> None:
     """Print the effective default format."""
     obj = ctx_obj(ctx)
     obj.emitter.emit({"defaultFormat": obj.config.default_format or "json"})
+
+
+@app.command("set-cutoff-field")
+def set_cutoff_field(
+    ctx: typer.Context,
+    name: str = typer.Argument(..., help='Project date attribute holding the last-billed date, e.g. "Billed through".'),
+) -> None:
+    """Set the project attribute `cost open` reads as the billing cut-off date."""
+    obj = ctx_obj(ctx)
+    cfg = Config.load()
+    cfg.cost_cutoff_field = name
+    cfg.save()
+    obj.emitter.emit({"status": "saved", "costCutoffField": name, "configPath": str(config_path())})
+
+
+@app.command("set-billable-field")
+def set_billable_field(
+    ctx: typer.Context,
+    name: str = typer.Argument(..., help='Project boolean attribute flagging billable projects, e.g. "Billable".'),
+) -> None:
+    """Set the project attribute `cost open` (without -P) uses to find billable projects."""
+    obj = ctx_obj(ctx)
+    cfg = Config.load()
+    cfg.cost_billable_field = name
+    cfg.save()
+    obj.emitter.emit({"status": "saved", "costBillableField": name, "configPath": str(config_path())})
 
 
 @app.command()

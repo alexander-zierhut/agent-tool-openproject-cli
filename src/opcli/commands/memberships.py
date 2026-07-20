@@ -19,9 +19,34 @@ app = typer.Typer(no_args_is_help=True)
 _COLUMNS = [
     ("ID", "id"),
     ("Principal", lambda r: (r.get("principal") or {}).get("name")),
+    ("Login", lambda r: (r.get("principal") or {}).get("login")),
     ("Project", lambda r: (r.get("project") or {}).get("name")),
     ("Roles", "roles"),
 ]
+
+
+def _attach_logins(client, rows: list[dict]) -> None:
+    """Fill ``principal.login`` on membership rows in place.
+
+    The memberships payload carries only the principal's href and title, not its
+    login — but ``--assignee`` wants the login. Resolve them all in ONE batched
+    ``principals`` query (id filter) rather than a call per row. Groups/placeholder
+    principals have no login and stay ``None``; a lookup failure leaves the
+    reserved ``None`` untouched rather than failing the list."""
+    ids = sorted({str(r["principal"]["id"]) for r in rows
+                  if r.get("principal") and r["principal"].get("id") is not None})
+    if not ids:
+        return
+    filters = json.dumps([{"id": {"operator": "=", "values": ids}}])
+    try:
+        logins = {str(p.get("id")): p.get("login")
+                  for p in client.collect("principals", params={"filters": filters}, limit=None)}
+    except OpError:
+        return
+    for r in rows:
+        pr = r.get("principal")
+        if pr and pr.get("id") is not None and str(pr["id"]) in logins:
+            pr["login"] = logins[str(pr["id"])]
 
 
 @app.command("list")
@@ -42,6 +67,7 @@ def list_members(
         filters.append({"principal": {"operator": "=", "values": [str(hal.id_from_href(href))]}})
     params = {"filters": json.dumps(filters)} if filters else {}
     rows = [serialize.membership(m) for m in client.collect("memberships", params=params, limit=limit or None)]
+    _attach_logins(client, rows)
     obj.emitter.emit(rows, columns=_COLUMNS, empty="(no memberships)")
 
 
@@ -72,7 +98,9 @@ def add(
             "roles": _role_hrefs(client, role),
         }
     }
-    obj.emitter.emit(serialize.membership(client.post("memberships", json=body)))
+    row = serialize.membership(client.post("memberships", json=body))
+    _attach_logins(client, [row])
+    obj.emitter.emit(row)
 
 
 @app.command()
@@ -85,7 +113,9 @@ def update(
     obj = ctx_obj(ctx)
     client = obj.client()
     body = {"_links": {"roles": _role_hrefs(client, role)}}
-    obj.emitter.emit(serialize.membership(client.patch(f"memberships/{membership_id}", json=body)))
+    row = serialize.membership(client.patch(f"memberships/{membership_id}", json=body))
+    _attach_logins(client, [row])
+    obj.emitter.emit(row)
 
 
 @app.command()

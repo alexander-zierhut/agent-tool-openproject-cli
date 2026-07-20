@@ -45,11 +45,26 @@ def get(
     ctx: typer.Context,
     project: str = typer.Argument(..., help="Project id or identifier."),
     raw: bool = typer.Option(False, "--raw", "-r", help="Return the full HAL document."),
+    attributes: bool = typer.Option(
+        False, "--attributes", "-a",
+        help="Resolve project custom fields to their human names, types and values.",
+    ),
 ) -> None:
-    """Show a single project."""
+    """Show a single project.
+
+    With ``--attributes`` the project's custom fields are joined to their human
+    names and types (and CustomOption values resolved to titles), so you don't
+    have to read the definitions with ``cf project`` and map ``customFieldNN`` by
+    hand. ``--raw`` wins over ``--attributes`` (returns the untouched HAL doc).
+    """
     obj = ctx_obj(ctx)
-    doc = resolve.project(obj.client(), project)
-    obj.emitter.emit(doc if raw else serialize.project(doc))
+    client = obj.client()
+    doc = resolve.project(client, project)
+    if raw:
+        obj.emitter.emit(doc)
+        return
+    schema = resolve.project_form_schema(client, doc.get("id")) if attributes else None
+    obj.emitter.emit(serialize.project(doc, schema=schema))
 
 
 @app.command()

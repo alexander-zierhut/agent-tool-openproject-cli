@@ -35,8 +35,13 @@ def hours_to_iso(hours: float) -> str:
 def iso_to_hours(value: str | None) -> float | None:
     """``"PT2H30M"`` -> ``2.5``. Returns ``None`` for falsy input.
 
-    Days count as 24h and weeks as 7 days — adequate for OpenProject's usage
-    (it never emits year/month components for durations).
+    Days count as **24h** and weeks as **7 days (168h)** — the calendar
+    convention OpenProject's serializer actually uses. Verified live: posting
+    ``hours=PT40H`` comes back as ``"P1DT16H"`` (40 = 24 + 16, so a day is 24h)
+    and ``P1W`` normalises to ``"P7D"`` (168h). This holds regardless of the
+    instance's hours-per-day setting, because the ``hours`` field is a raw
+    ``ActiveSupport::Duration``, not scheduling time. (A "working day" of 8h is
+    logged as ``PT8H``, not ``P1D``.) OP never emits year/month components.
     """
     if not value:
         return None

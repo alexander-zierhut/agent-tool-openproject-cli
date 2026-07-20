@@ -89,6 +89,52 @@ def query_time_entries(client, *, user=None, project=None, work_package=None, fr
     return []
 
 
+_GROUP_DIMS = {"user": "user", "activity": "activity", "workpackage": "workPackage", "wp": "workPackage"}
+
+
+def _norm_group_by(value: str) -> str:
+    """Normalise ``--group-by`` (case-insensitive, `-`/`_` ignored) to a canonical
+    dimension, or raise a usage error listing the valid choices."""
+    key = value.strip().lower().replace("-", "").replace("_", "")
+    if key not in _GROUP_DIMS:
+        raise OpError("--group-by must be one of: user, activity, workPackage")
+    return _GROUP_DIMS[key]
+
+
+def _group_rows(rows: list[dict], dim: str) -> list[dict]:
+    """Sum decimal hours per group. `dim` is user | activity | workPackage."""
+    buckets: dict = {}
+    for r in rows:
+        h = r.get("hoursDecimal") or 0.0
+        if dim == "activity":
+            val = r.get("activity")
+            key, label = val, (val or "(none)")
+        else:
+            ref = r.get(dim) or None
+            key = ref.get("id") if ref else None
+            val = ref
+            label = (ref or {}).get("name") or "(none)"
+        b = buckets.get(key)
+        if b is None:
+            b = buckets[key] = {"value": val, "label": label, "hours": 0.0, "entries": 0}
+        b["hours"] += h
+        b["entries"] += 1
+    out = sorted(buckets.values(), key=lambda b: (-b["hours"], (b["label"] or "").lower()))
+    return [{dim: b["value"], "hours": round(b["hours"], 2), "entries": b["entries"]} for b in out]
+
+
+def _group_columns(dim: str) -> list:
+    tail = [("Hours", "hours"), ("Entries", "entries")]
+    if dim == "user":
+        return [("User", lambda r: (r.get("user") or {}).get("name"))] + tail
+    if dim == "activity":
+        return [("Activity", "activity")] + tail
+    return [
+        ("WorkPkg", lambda r: (r.get("workPackage") or {}).get("id")),
+        ("Subject", lambda r: (r.get("workPackage") or {}).get("name")),
+    ] + tail
+
+
 @app.command("list")
 def list_entries(
     ctx: typer.Context,
@@ -98,14 +144,40 @@ def list_entries(
     frm: str = typer.Option(None, "--from", help="Start date (YYYY-MM-DD)."),
     to: str = typer.Option(None, "--to", help="End date (YYYY-MM-DD)."),
     month: str = typer.Option(None, "--month", help="Convenience month filter YYYY-MM."),
-    limit: int = typer.Option(100, "--limit", "-n", help="Maximum rows (0 = all)."),
+    limit: int = typer.Option(100, "--limit", "-n", help="Maximum rows (0 = all). Ignored with --sum/--group-by (they scan all matches)."),
+    sum_: bool = typer.Option(False, "--sum", help="Return the total decimal hours (and entry count) instead of the entry list."),
+    group_by: str = typer.Option(None, "--group-by", help="Aggregate hours by user, activity, or workPackage (combine with --sum for a grand total)."),
 ) -> None:
-    """List time entries with filters (per person / project / work package)."""
+    """List time entries, or aggregate them.
+
+    Plain: one row per entry. ``--sum``: a single ``{totalHours, entries}``.
+    ``--group-by user|activity|workPackage``: per-group subtotals; add ``--sum``
+    to also get the grand total in a wrapper. Aggregation scans all matches,
+    ignoring ``--limit``.
+    """
     obj = ctx_obj(ctx)
     client = obj.client()
+    dim = _norm_group_by(group_by) if group_by else None
+    aggregating = sum_ or dim is not None
     entries = query_time_entries(client, user=user, project=project, work_package=work_package,
-                                 frm=frm, to=to, month=month, limit=limit or None)
+                                 frm=frm, to=to, month=month, limit=None if aggregating else (limit or None))
     rows = [serialize.time_entry(t) for t in entries]
+
+    if aggregating:
+        total = round(sum((r.get("hoursDecimal") or 0.0) for r in rows), 2)
+        n = len(rows)
+        if dim and sum_:
+            obj.emitter.emit({"groupBy": dim, "groups": _group_rows(rows, dim), "totalHours": total, "entries": n})
+        elif dim:
+            groups = _group_rows(rows, dim)
+            if obj.emitter.stream:  # --group-by is a row list, so it can stream as NDJSON
+                obj.emitter.stream_json(groups)
+            else:
+                obj.emitter.emit(groups, columns=_group_columns(dim), empty="(no time entries)")
+        else:
+            obj.emitter.emit({"totalHours": total, "entries": n})
+        return
+
     if obj.emitter.stream:
         obj.emitter.stream_json(rows)
         return

@@ -19,10 +19,21 @@ def scenario(op):
     for role in ("Project admin", "Member"):
         if op(["member", "add", "--project", ident, "--user", "me", "--role", role]).code == 0:
             break
-    yesterday = (dt.date.today() - dt.timedelta(days=1)).isoformat()
+    # OpenProject reschedules a due date that lands on a non-working day (Sat/Sun)
+    # to the next working day on create — so a "yesterday" that is a weekend gets
+    # pushed onto today (or later) and the WP is no longer overdue, which used to
+    # flake this suite every Monday. Snap back to the most recent working day.
+    d = dt.date.today() - dt.timedelta(days=1)
+    while d.weekday() >= 5:
+        d -= dt.timedelta(days=1)
+    yesterday = d.isoformat()
     A = op(["wp", "create", "alpha", "--project", ident, "--assignee", "me"]).ok().json["id"]
     B = op(["wp", "create", "beta", "--project", ident]).ok().json["id"]
-    C = op(["wp", "create", "gamma late", "--project", ident, "--assignee", "me", "--due-date", yesterday]).ok().json["id"]
+    c_wp = op(["wp", "create", "gamma late", "--project", ident, "--assignee", "me", "--due-date", yesterday]).ok().json
+    C = c_wp["id"]
+    # Fail loudly if scheduling still moved it forward, instead of a mystery empty set.
+    assert (c_wp.get("dueDate") or "") < dt.date.today().isoformat(), \
+        f"seed WP {C} not past-due (dueDate={c_wp.get('dueDate')}) — overdue tests would flake"
     D = op(["wp", "create", "delta", "--project", ident, "--assignee", "me"]).ok().json["id"]
     op(["wp", "update", str(D), "--status", "Closed"]).ok()
     data = {"ident": ident, "A": A, "B": B, "C": C, "D": D}

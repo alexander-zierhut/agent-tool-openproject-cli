@@ -59,13 +59,26 @@ def wp(
 @app.command()
 def project(
     ctx: typer.Context,
+    project_ref: str = typer.Option(
+        None, "--project", "-P",
+        help="Scope to one project's active attributes (default: every project attribute defined in the instance).",
+    ),
     all_fields: bool = typer.Option(False, "--all", help="Include built-in fields, not just custom."),
 ) -> None:
-    """List custom fields (project attributes) available on projects."""
+    """List custom fields (project attributes).
+
+    Without ``-P``: every project attribute defined in the instance (the global
+    form). With ``-P <project>``: only the attributes active on that project. To
+    see a project's attribute *values* (not just the definitions), use
+    ``project get <project> --attributes``.
+    """
     obj = ctx_obj(ctx)
     client = obj.client()
-    form = client.post("projects/form", json={})
-    schema = (form.get("_embedded") or {}).get("schema") or {}
+    if project_ref:
+        schema = resolve.project_form_schema(client, resolve.project_id(client, project_ref))
+    else:
+        form = client.post("projects/form", json={})
+        schema = (form.get("_embedded") or {}).get("schema") or {}
     obj.emitter.emit(_schema_fields(schema, only_custom=not all_fields), columns=_COLUMNS, empty="(no custom fields)")
 
 

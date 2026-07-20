@@ -60,6 +60,10 @@ class Config:
     profiles: dict[str, Profile] = field(default_factory=dict)
     default_format: str | None = None  # json | table | markdown; None = not yet chosen
     claude_prompted: bool = False  # have we offered the Claude Code skill install yet?
+    # `cost open` needs to know which instance-specific project attributes hold the
+    # last-billed date and the billable flag; they are named per instance.
+    cost_cutoff_field: str | None = None
+    cost_billable_field: str | None = None
     # sticky session context: option-name -> default value, applied to later
     # commands (see `openproject context`). `contexts` holds named, saved ones.
     context: dict = field(default_factory=dict)
@@ -87,6 +91,8 @@ class Config:
                 profiles=profiles,
                 default_format=raw.get("default_format"),
                 claude_prompted=bool(raw.get("claude_prompted", False)),
+                cost_cutoff_field=raw.get("cost_cutoff_field"),
+                cost_billable_field=raw.get("cost_billable_field"),
                 context=raw.get("context") or {},
                 contexts=raw.get("contexts") or {},
             )
@@ -100,6 +106,8 @@ class Config:
             "current_profile": self.current_profile,
             "default_format": self.default_format,
             "claude_prompted": self.claude_prompted,
+            "cost_cutoff_field": self.cost_cutoff_field,
+            "cost_billable_field": self.cost_billable_field,
             "context": self.context,
             "contexts": self.contexts,
             "profiles": {

@@ -70,6 +70,56 @@ def project_id(client: Client, ref: str | int) -> int:
     return int(project(client, ref)["id"])
 
 
+def project_form_schema(client: Client, pid: int | str | None = None) -> Json:
+    """The project form schema: ``{customFieldNN: {name, type, ...}}``.
+
+    OpenProject only exposes project custom-field *definitions* (their human
+    names/types) through the create/update form, so this POSTs an empty form and
+    returns its schema. With *pid* it is that project's active attributes; without
+    it, every project attribute defined in the instance. Returns ``{}`` if the
+    form is unavailable — callers degrade gracefully rather than failing a read.
+    """
+    path = f"projects/{pid}/form" if pid is not None else "projects/form"
+    try:
+        form = client.post(path, json={})
+    except OpError:
+        return {}
+    return (form.get("_embedded") or {}).get("schema") or {}
+
+
+def project_cf_key(client: Client, name: str, *, pid: int | str | None = None) -> str:
+    """Find the ``customFieldNN`` key whose human name equals *name*.
+
+    Prefers an exact-case match, then a case-insensitive one (so near-duplicate
+    labels resolve deterministically). Raises :class:`OpError` naming the
+    available attributes when nothing matches — so ``cost open --cutoff-field
+    "Billed through"`` fails with a helpful list, not a silent miss.
+    """
+    import re as _re
+
+    schema = project_form_schema(client, pid)
+    want = name.strip()
+    want_ci = want.casefold()
+    exact = ci = None
+    avail: list[str] = []
+    for key, spec in schema.items():
+        if not _re.match(r"^customField\d+$", key):
+            continue
+        label = (spec or {}).get("name")
+        if not label:
+            continue
+        avail.append(label)
+        if label.strip() == want and exact is None:
+            exact = key
+        if label.strip().casefold() == want_ci and ci is None:
+            ci = key
+    if exact or ci:
+        return exact or ci
+    raise OpError(
+        f"no project attribute named {name!r}. Available: {', '.join(sorted(avail)) or '(none)'}."
+    )
+
+
 def status(client: Client, ref: str | int) -> str:
     el = _resolve_collection(client, "statuses", ref, ["name"], label="status")
     return f"/api/v3/statuses/{el['id']}"
