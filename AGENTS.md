@@ -168,3 +168,25 @@ openproject raw patch work_packages/"$ID" -d '{"lockVersion":3,"subject":"…"}'
 - **Wiki** is read-only metadata over the API (no body text). **Costs**: the API
   has no rates, so `cost report` multiplies hours by a rate table you provide.
 - Use `--profile/-p name` to target a specific instance when several are configured.
+
+## Reporting a problem — open a GitHub issue
+
+If a task was painful, needed too many steps, hit a missing feature, or was
+impossible with `openproject` — **and the user asks you to file it** — open an issue on
+this tool's own repo. Only when asked; never unprompted; one issue per problem.
+
+- Repo: `alexander-zierhut/agent-tool-openproject-cli`
+- Issues: https://github.com/alexander-zierhut/agent-tool-openproject-cli/issues
+- Self-contained (no repo/README needed beside the binary): `openproject report` prints exactly this — the repo, a pre-filled `issues/new` link, and a `gh` one-liner — offline, no token.
+
+Search for a duplicate first, then file — prefer the `gh` CLI:
+
+```bash
+gh issue list   --repo alexander-zierhut/agent-tool-openproject-cli --search "<keywords>"
+gh issue create --repo alexander-zierhut/agent-tool-openproject-cli \
+  --title "<one-line summary>" \
+  --body  "<goal · exact command(s) run · JSON error + exit code · `openproject --version` · what would have made it work>"
+```
+
+If `gh` is missing or unauthenticated, hand the user a prefilled link instead:
+`https://github.com/alexander-zierhut/agent-tool-openproject-cli/issues/new?title=…&body=…`.

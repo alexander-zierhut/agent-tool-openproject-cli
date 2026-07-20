@@ -19,6 +19,7 @@ _Every command also accepts `--output/-o` (json\|table\|markdown\|csv), `--forma
 - [`notify`](#notify) — In-app notifications.
 - [`project`](#project) — Create, list, archive projects.
 - [`raw`](#raw) — Escape hatch: call any API endpoint directly.
+- [`report`](#report) — Report a bug or missing feature — prints this tool's repo and a pre-filled issue link (offline, no token).
 - [`search`](#search) — Powerful work-package (and global) search.
 - [`settings`](#settings) — View & change CLI settings (default output format).
 - [`time`](#time) — Log, edit, list time entries + reports.
@@ -521,6 +522,12 @@ POST to an endpoint.
 | `--data`, `-d` | JSON request body. |
 | `--data-file` | File containing the JSON body. |
 | `--param`, `-p` | Query param key=value (repeatable). |
+
+## `report`
+
+### `openproject report`
+
+Report a bug or missing feature — prints this tool's repo and a pre-filled issue link (offline, no token).
 
 ## `search`
 

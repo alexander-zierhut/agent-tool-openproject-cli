@@ -92,7 +92,7 @@ def _root(
 def _maybe_offer_claude(ctx: typer.Context, interactive: bool) -> None:
     """Once, on an interactive first run with Claude Code present, offer to
     register the Claude skill. Never runs under Claude Code itself (non-TTY)."""
-    if not interactive or ctx.invoked_subcommand in ("install", "settings", "guide", "context"):
+    if not interactive or ctx.invoked_subcommand in ("install", "settings", "guide", "context", "report"):
         return
     cfg = ctx.obj.config
     if cfg.claude_prompted:
@@ -196,6 +196,7 @@ from .commands import (  # noqa: E402
     notifications,
     projects,
     raw,
+    report,
     search,
     settings,
     time_entries,
@@ -205,6 +206,7 @@ from .commands import (  # noqa: E402
 )
 
 app.command("guide", help="Built-in operating guide — how to use this CLI without external docs.")(guide.guide)
+app.command("report", help="Report a bug or missing feature — prints this tool's repo and a pre-filled issue link (offline, no token).")(report.report)
 
 app.add_typer(auth.app, name="auth", help="Log in, log out, inspect credentials.")
 app.add_typer(projects.app, name="project", help="Create, list, archive projects.")

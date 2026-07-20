@@ -71,6 +71,7 @@ group. The top level:
 
 ╭─ Commands ───────────────────────────────────────────────────────────────────────╮
 │ guide     Built-in operating guide — how to use this CLI without external docs.  │
+│ report    Report a bug / missing feature — repo + pre-filled issue link.         │
 │ auth      Log in, log out, inspect credentials.                                  │
 │ project   Create, list, archive projects.                                        │
 │ wp        Work packages: CRUD, move, assign, watch.                              │

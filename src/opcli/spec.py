@@ -12,6 +12,10 @@ from __future__ import annotations
 
 from agentcli import AppSpec, Credentials
 
-SPEC = AppSpec(name="op-cli", env_prefix="OPCLI")
+SPEC = AppSpec(
+    name="op-cli",
+    env_prefix="OPCLI",
+    repo="alexander-zierhut/agent-tool-openproject-cli",
+)
 
 credentials = Credentials(SPEC)
