@@ -9,6 +9,8 @@ Like ``guide``, it must be impossible to fail on config or auth — keep it iner
 
 from __future__ import annotations
 
+import dataclasses
+
 import typer
 
 from agentcli import build_report
@@ -25,4 +27,7 @@ def report(ctx: typer.Context) -> None:
     form) and a ``gh issue create`` one-liner. Use it when a task was painful,
     needed too many steps, or was impossible: run it, then file what it shows.
     """
-    ctx_obj(ctx).emitter.emit(build_report(SPEC, __version__))
+    # SPEC.name ("op-cli") is the config-dir / keyring-service name and must stay
+    # that way, or existing logins vanish. The report, though, has to name the
+    # command a user actually types (`openproject --version`, `openproject report`).
+    ctx_obj(ctx).emitter.emit(build_report(dataclasses.replace(SPEC, name="openproject"), __version__))
